@@ -78,8 +78,8 @@ class Validator(object):
             else:
                 self.missingElement("ingester:butler")
 
-            if "batchSize" not in ingesterConfig:
-                self.missingElement("ingester:batchSize")
+            if "badFileDirectory" not in ingesterConfig:
+                self.missingElement("ingester:badFileDirectory")
 
             self.checkIntervalBlock("scanInterval", configName, ingesterConfig)
 

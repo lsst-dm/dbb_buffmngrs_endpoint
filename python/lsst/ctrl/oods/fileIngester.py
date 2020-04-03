@@ -18,8 +18,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import logging
+import shutil
 from lsst.ctrl.oods.directoryScanner import DirectoryScanner
 from importlib import import_module
+
+
+logger = logging.getLogger(__name__)
 
 
 class FileIngester(object):
@@ -28,13 +34,12 @@ class FileIngester(object):
     or there will be an attempt to ingest them again later.
     """
 
-    def __init__(self, logger, config):
+    def __init__(self, config):
         self.config = config
-
         self.scanner = DirectoryScanner(config)
+        self.bad_file_dir = config["badFileDirectory"]
 
         butlerConfig = config["butler"]
-
         classConfig = butlerConfig["class"]
 
         # create the butler
@@ -44,12 +49,19 @@ class FileIngester(object):
         mod = import_module(importFile)
         butlerClass = getattr(mod, name)
 
-        self.butler = butlerClass(logger, butlerConfig["repoDirectory"])
-
-        self.batchSize = config["batchSize"]
+        self.repo = butlerConfig["repoDirectory"]
+        self.butler = butlerClass(self.repo)
 
     def run_task(self):
         """Scan to get the files, and ingest them in batches.
         """
-        files = self.scanner.getAllFiles()
-        self.butler.ingest(files, self.batchSize)
+        filenames = self.scanner.getAllFiles()
+        for filename in filenames:
+            try:
+                self.butler.ingest(filename)
+                logger.info(f"{filename} ingested successfully.")
+            except Exception as e:
+                err = f"{filename} could not be ingested. " \
+                      f"Moving to {self.bad_file_dir}: {e}"
+                logger.warning(err)
+                shutil.move(filename, self.bad_file_dir)

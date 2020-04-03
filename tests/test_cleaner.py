@@ -26,14 +26,10 @@ import unittest
 from lsst.ctrl.oods.directoryScanner import DirectoryScanner
 from lsst.ctrl.oods.cacheCleaner import CacheCleaner
 import lsst.utils.tests
-import logging
 
 
 class CleanerTestCase(lsst.utils.tests.TestCase):
     """Test cache cleaning"""
-
-    def setUp(self):
-        self.logger = logging.getLogger("CleanerTestCase")
 
     def testFileCleaner(self):
 
@@ -67,7 +63,7 @@ class CleanerTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(len(files), 3)
 
         # run the cleaner once
-        cleaner = CacheCleaner(self.logger, config)
+        cleaner = CacheCleaner(config)
         cleaner.run_task()
 
         # get the list of files
@@ -127,7 +123,7 @@ class CleanerTestCase(lsst.utils.tests.TestCase):
         (fh2, filename2) = tempfile.mkstemp(dir=dirPath)
 
         # run the cleaner once
-        cleaner = CacheCleaner(self.logger, config)
+        cleaner = CacheCleaner(config)
         cleaner.run_task()
 
         # check to see if all the directories are still there

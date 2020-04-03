@@ -18,15 +18,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import logging
 import os
 import time
 from lsst.ctrl.oods.timeInterval import TimeInterval
 
 
+logger = logging.getLogger(__name__)
+
+
 class CacheCleaner(object):
     """Removes files and subdirectories older than a certain interval."""
 
-    def __init__(self, logger, config):
+    def __init__(self, config):
         self.logger = logger
         self.config = config
         self.directories = self.config["directories"]

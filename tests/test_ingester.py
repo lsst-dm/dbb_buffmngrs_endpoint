@@ -65,25 +65,12 @@ class Gen2IngesterTestCase(lsst.utils.tests.TestCase):
         files = scanner.getAllFiles()
         self.assertEqual(len(files), 1)
 
-        ingester = FileIngester(self.logger, self.config["ingester"])
+        ingester = FileIngester(self.config["ingester"])
         ingester.run_task()
 
         files = scanner.getAllFiles()
         self.assertEqual(len(files), 0)
 
-        ingester.run_task()
-
-        files = scanner.getAllFiles()
-        self.assertEqual(len(files), 0)
-
-    def testBatchSize(self):
-        scanner = DirectoryScanner(self.config["ingester"])
-        files = scanner.getAllFiles()
-        self.assertEqual(len(files), 1)
-
-        self.config["ingester"]["batchSize"] = -1
-
-        ingester = FileIngester(self.logger, self.config["ingester"])
         ingester.run_task()
 
         files = scanner.getAllFiles()

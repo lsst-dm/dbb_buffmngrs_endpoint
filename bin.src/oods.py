@@ -26,13 +26,15 @@ import logging
 import os
 import sys
 import yaml
-import lsst.utils
+import lsst.log
 from lsst.ctrl.oods.taskRunner import TaskRunner
 from lsst.ctrl.oods.fileIngester import FileIngester
 from lsst.ctrl.oods.cacheCleaner import CacheCleaner
 from lsst.ctrl.oods.validator import Validator
 
-logger = logging.getLogger("ctrl_oods")
+lsst.log.usePythonLogging()
+
+logger = logging.getLogger("lsst.ctrl.oods")
 
 name = os.path.basename(sys.argv[0])
 
@@ -80,12 +82,12 @@ logger.info("starting...")
 
 
 ingester_config = oods_config["ingester"]
-ingester = FileIngester(logger, ingester_config)
+ingester = FileIngester(ingester_config)
 ingest = TaskRunner(interval=ingester_config["scanInterval"],
                     task=ingester.run_task)
 
 cache_config = oods_config["cacheCleaner"]
-cache_cleaner = CacheCleaner(logger, cache_config)
+cache_cleaner = CacheCleaner(cache_config)
 cleaner = TaskRunner(interval=cache_config["scanInterval"],
                      task=cache_cleaner.run_task)
 

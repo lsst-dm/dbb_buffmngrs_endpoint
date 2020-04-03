@@ -65,7 +65,7 @@ class ValidatorTestCase(lsst.utils.tests.TestCase):
                                import: lsst.ctrl.oods.gen2ButlerIngester
                                name: Gen2ButlerIngester
                              repoDirectory : repo
-                           batchSize: 20
+                           badFileDirectory: badfiles
                            scanInterval:
                              days: 0
                              hours: 0
@@ -149,7 +149,7 @@ class ValidatorTestCase(lsst.utils.tests.TestCase):
         self.assertFalse(isValid)
         self.verifyMissingElement(val, "ingester:directories")
         self.verifyMissingElement(val, "ingester:butler")
-        self.verifyMissingElement(val, "ingester:batchSize")
+        self.verifyMissingElement(val, "ingester:badFileDirectory")
         self.verifyMissingElement(val, "ingester:scanInterval")
         self.verifyMissingElement(val, "cacheCleaner")
 
@@ -206,7 +206,7 @@ class ValidatorTestCase(lsst.utils.tests.TestCase):
                          ingester:
                             directories:
                                 - dir
-                            batchSize: 20
+                            badFilesDirectory: dir
                             butler:
                                 class:
                                     foo: bar
@@ -230,7 +230,7 @@ class ValidatorTestCase(lsst.utils.tests.TestCase):
                          ingester:
                             directories:
                                 - dir
-                            batchSize: 20
+                            badFileDirectory: dir
                             butler:
                                 class:
                                     import: somefile
@@ -255,7 +255,7 @@ class ValidatorTestCase(lsst.utils.tests.TestCase):
                          ingester:
                             directories:
                                 - dir
-                            batchSize: 20
+                            badFileDirectory: dir
                             butler:
                                 class:
                                     import: somefile
@@ -283,7 +283,7 @@ class ValidatorTestCase(lsst.utils.tests.TestCase):
                          ingester:
                             directories:
                                 - dir
-                            batchSize: 20
+                            badFileDirectory: dir
                             butler:
                                 class:
                                     import: somefile
@@ -321,7 +321,7 @@ class ValidatorTestCase(lsst.utils.tests.TestCase):
                          ingester:
                             directories:
                                 - dir
-                            batchSize: 20
+                            badFileDirectory: dir
                             butler:
                                 class:
                                     import: somefile
