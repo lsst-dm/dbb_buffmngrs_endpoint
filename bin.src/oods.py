@@ -32,32 +32,26 @@ from lsst.ctrl.oods.fileIngester import FileIngester
 from lsst.ctrl.oods.cacheCleaner import CacheCleaner
 from lsst.ctrl.oods.validator import Validator
 
-lsst.log.usePythonLogging()
 
-logger = logging.getLogger("lsst.ctrl.oods")
-
+# Parse command line arguments
 name = os.path.basename(sys.argv[0])
-
 parser = argparse.ArgumentParser(prog=name,
                                  description='''Ingests new files into a Butler''')
 parser.add_argument("config", default=None, nargs='?',
                     help="use specified OODS YAML configuration file")
-
 parser.add_argument("-y", "--yaml-validate", action="store_true",
                     dest="validate", default=False,
                     help="validate YAML configuration file")
 parser.add_argument("-l", "--loglevel", nargs='?',
                     choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'),
-                    default='warn', help="print logging statements")
-
+                    default='WARN', help="print logging statements")
 args = parser.parse_args()
-lvls = {'DEBUG': logging.DEBUG,
-        'INFO': logging.INFO,
-        'WARN': logging.WARNING,
-        'ERROR': logging.ERROR,
-        'FATAL': logging.CRITICAL}
 
-logger.setLevel(lvls[args.loglevel.upper()])
+# Set up logging.
+lvl = getattr(logging, args.loglevel, logging.WARN)
+logging.basicConfig(level=lvl)
+logger = logging.getLogger("lsst.ctrl.oods")
+lsst.log.usePythonLogging()
 
 if args.config is None:
     package = lsst.utils.getPackageDir("ctrl_oods")
