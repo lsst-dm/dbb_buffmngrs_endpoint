@@ -61,7 +61,5 @@ class FileIngester(object):
                 self.butler.ingest(filename)
                 logger.info(f"{filename} ingested successfully.")
             except Exception as e:
-                err = f"{filename} could not be ingested. " \
-                      f"Moving to {self.bad_file_dir}: {e}"
-                logger.warning(err)
+                logger.warning(f"{e}, moving to {self.bad_file_dir}.")
                 shutil.move(filename, self.bad_file_dir)
