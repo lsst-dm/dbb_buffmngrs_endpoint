@@ -62,4 +62,10 @@ class FileIngester(object):
                 logger.info(f"{filename} ingested successfully.")
             except Exception as e:
                 logger.warning(f"{e}, moving to {self.bad_file_dir}.")
-                shutil.move(filename, self.bad_file_dir)
+                try:
+                    shutil.move(filename, self.bad_file_dir)
+                except OSError as ex:
+                    # Moving file to the bad file area failed for some reason.
+                    # No need to reraise as we can't do much about OS related
+                    # errors. Just log the error message for future reference.
+                    logger.error(f"Operation failed: {ex}.")
