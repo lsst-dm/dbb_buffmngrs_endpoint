@@ -1,4 +1,4 @@
 # -*- python -*-
 from lsst.sconsUtils import scripts
 # Python-only package
-scripts.BasicSConstruct("ctrl_oods", disableCc=True)
+scripts.BasicSConstruct("dbb_buffmngrs_endpoint", disableCc=True, noCfgFile=True)

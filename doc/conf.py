@@ -4,10 +4,10 @@ This configuration only affects single-package Sphinx documentation builds.
 """
 
 from documenteer.sphinxconfig.stackconf import build_package_configs
-import lsst.ctrl.oods
+import lsst.dbb.buffmngrs.endpoint
 
 
 _g = globals()
 _g.update(build_package_configs(
-    project_name='ctrl_oods',
+    project_name='dbb_buffmngrs_endpoint',
     version=lsst.ctrl.oods.version.__version__))
