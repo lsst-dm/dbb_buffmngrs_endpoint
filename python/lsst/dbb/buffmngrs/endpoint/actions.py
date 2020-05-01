@@ -24,7 +24,7 @@ import shutil
 from .abcs import Action
 
 
-__all__ = ["Null", "Move"]
+__all__ = ["Null", "Move", "Delete"]
 
 
 logger = logging.getLogger(__name__)
@@ -174,3 +174,36 @@ class Move(Action):
         finally:
             os.chdir(cwd)
             self.old, self.new = None, None
+
+
+class Delete(Action):
+    """Delete a file.
+
+    This action in irreversible!  Rolling it back is not implemented.
+    """
+
+    def execute(self, path):
+        """Execute action for a given file.
+
+        Parameters
+        ----------
+        path : `str`
+            Path to a file.
+        """
+        path = os.path.abspath(path)
+        try:
+            os.remove(path)
+        except OSError as ex:
+            logger.error(f"Cannot remove '{path}': {ex}.")
+        else:
+            self._fp = None
+
+    def undo(self):
+        """Rolls the action back.
+
+        Raises
+        ------
+        NotImplementedError
+            When called.
+        """
+        raise NotImplementedError("Action cannot be rolled back.")
