@@ -18,7 +18,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-from .abcs import *
-from .actions import *
-from .finder import *
-from .declaratives import *
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+
+
+__all__ = ["Message"]
+
+
+Base = declarative_base()
+
+
+class Message(Base):
+    __tablename__ = "broker"
+
+    id = Column(Integer, primary_key=True)
+    url = Column(String(255))
+
