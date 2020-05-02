@@ -24,6 +24,7 @@ import os
 import re
 import time
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 from .actions import Null
 from .declaratives import Message
 
@@ -55,7 +56,9 @@ class Finder(object):
                 raise ValueError(f"directory '{path}' not found.")
 
         noop = Null(dict())
-        self.action = config.get("action", noop)
+        self.std_action = config.get("standard", noop)
+        self.alt_action = config.get("alternative", noop)
+
         self.blacklist = config.get("blacklist", [])
         self.pause = config.get("pause", 1)
 
@@ -63,22 +66,56 @@ class Finder(object):
         while True:
             for path in self.search(self.buffer):
 
+                # Check if it is not a duplicate of an already existing file.
+                checksum = get_checksum(path)
+                try:
+                    query = self.session.query(Message).\
+                        filter(Message.checksum == checksum)
+                except SQLAlchemyError as ex:
+                    logger.error(f"Cannot check for duplicates: {ex}.")
+                else:
+                    is_duplicate = False
+                    try:
+                        row = query.one()
+                    except MultipleResultsFound:
+                        # Uh, oh, internal records indicate that there are
+                        # multiple duplicates of the file in the storage area.
+                        # It is should-not-happen kind of thing.
+                        dups = ", ".join(str(r.id) for r in query)
+                        logger.warning(f"Possible duplicates in rows: {dups}.")
+                        is_duplicate = True
+                    except NoResultFound:
+                        # According to internal records, the file is genuinely
+                        # new.  That's good, actually!
+                        pass
+                    else:
+                        # There is already a file with that checksum in the
+                        # storage area. Not good, but not tragic either.
+                        # Due to various glitches duplicates may pop up in
+                        # the buffer, but there are no redundant copies in
+                        # the storage area.
+                        logger.warning(f"Possible duplicate in row {row.id}.")
+                        is_duplicate = True
+                    if is_duplicate:
+                        self.alt_action.execute(path)
+                        msg = f"File {path} already in storage area, deleting."
+                        logger.warning(msg)
+                        continue
+
                 # Execute pre-defined action for the file.
                 try:
-                    self.action.execute(path)
+                    self.std_action.execute(path)
                 except RuntimeError as ex:
                     logger.error(f"Action failed: {ex}.")
                     continue
-                else:
-                    loc = self.action.path
 
-                # Update database entry for that file
-                entry = Message(url=loc)
+                # Update database entry for that file. If
+                entry = Message(url=self.std_action.path, checksum=checksum)
                 try:
                     self.session.add(entry)
                 except SQLAlchemyError as ex:
                     logger.error(f"Sending message failed: {ex}.")
-                    self.action.undo()
+                    self.std_action.undo()
                 else:
                     try:
                         self.session.commit()

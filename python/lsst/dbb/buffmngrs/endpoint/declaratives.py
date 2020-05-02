@@ -33,4 +33,5 @@ class Message(Base):
 
     id = Column(Integer, primary_key=True)
     url = Column(String(255))
+    checksum = Column(String(128))
 
