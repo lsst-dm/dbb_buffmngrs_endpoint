@@ -164,16 +164,24 @@ def get_checksum(path, method='blake2', block_size=4096):
 
 
 def scan(directory, blacklist=None):
-    """
+    """Generate the file names in a directory tree.
+
+    Generates the file paths in a given directory tree excluding those files
+    that were blacklisted.
 
     Parameters
     ----------
     directory : `str`
-    blacklist : `list` of `str`
+        The root of the directory tree which need to be searched.
+    blacklist : `list` of `str`, optional
+        List of regular expressions file names should be match against. If a
+        filename matches any of the patterns in the list, file will be ignored.
+        By default, no file is ignored.
 
     Returns
     -------
-    filename :
+    generator object
+        An iterator over file paths.
     """
     if blacklist is None:
         blacklist = []
