@@ -18,6 +18,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import datetime
 import hashlib
 import logging
 import os
@@ -26,7 +27,7 @@ import time
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 from .actions import Null
-from .declaratives import Message
+from .declaratives import File
 
 
 __all__ = ["Finder"]
@@ -69,8 +70,8 @@ class Finder(object):
                 # Check if it is not a duplicate of an already existing file.
                 checksum = get_checksum(path)
                 try:
-                    query = self.session.query(Message).\
-                        filter(Message.checksum == checksum)
+                    query = self.session.query(File).\
+                        filter(File.checksum == checksum)
                 except SQLAlchemyError as ex:
                     logger.error(f"Cannot check for duplicates: {ex}.")
                 else:
@@ -109,8 +110,11 @@ class Finder(object):
                     logger.error(f"Action failed: {ex}.")
                     continue
 
-                # Update database entry for that file. If
-                entry = Message(url=self.std_action.path, checksum=checksum)
+                # Insert data about file into the database.
+                ts = datetime.datetime.now()
+                entry = File(url=self.std_action.path,
+                             checksum=checksum,
+                             added_at=ts.isoformat(timespec="milliseconds"))
                 try:
                     self.session.add(entry)
                 except SQLAlchemyError as ex:

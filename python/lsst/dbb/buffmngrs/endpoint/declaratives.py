@@ -22,16 +22,17 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 
 
-__all__ = ["Message"]
+__all__ = ["File"]
 
 
 Base = declarative_base()
 
 
-class Message(Base):
-    __tablename__ = "broker"
+class File(Base):
+    __tablename__ = "files"
 
     id = Column(Integer, primary_key=True)
     url = Column(String(255))
     checksum = Column(String(128))
+    added_at = Column(String(26))
 
