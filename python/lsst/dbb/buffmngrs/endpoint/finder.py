@@ -95,12 +95,12 @@ class Finder(object):
                         # Due to various glitches duplicates may pop up in
                         # the buffer, but there are no redundant copies in
                         # the storage area.
-                        logger.warning(f"Possible duplicate in row {row.id}.")
+                        logger.warning(f"File '{path}' already in the storage "
+                                       f"area, see '{rec.url}', row {rec.id}.")
                         is_duplicate = True
                     if is_duplicate:
                         self.alt_action.execute(path)
-                        msg = f"File {path} already in storage area, deleting."
-                        logger.warning(msg)
+                        logger.info(f"Duplicate '{path}' removed.")
                         continue
 
                 # Execute pre-defined action for the file.
@@ -118,7 +118,7 @@ class Finder(object):
                 try:
                     self.session.add(entry)
                 except SQLAlchemyError as ex:
-                    logger.error(f"Sending message failed: {ex}.")
+                    logger.error(f"Adding {self.std_action.path} failed: {ex}.")
                     self.std_action.undo()
                 else:
                     try:
