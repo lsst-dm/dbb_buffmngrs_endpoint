@@ -77,12 +77,12 @@ class Finder(object):
                 else:
                     is_duplicate = False
                     try:
-                        row = query.one()
+                        rec = query.one()
                     except MultipleResultsFound:
                         # Uh, oh, internal records indicate that there are
                         # multiple duplicates of the file in the storage area.
                         # It is should-not-happen kind of thing.
-                        dups = ", ".join(str(r.id) for r in query)
+                        dups = ", ".join(str(rec.id) for rec in query)
                         logger.warning(f"Possible duplicates in rows: {dups}.")
                         is_duplicate = True
                     except NoResultFound:
