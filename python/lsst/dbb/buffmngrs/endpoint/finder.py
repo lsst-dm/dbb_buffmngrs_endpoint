@@ -78,7 +78,8 @@ class Finder(object):
             for path in self.search(self.buffer):
                 action_type = "std"
 
-                # Check if it is not a duplicate of an already existing file.
+                # Check if the new file is not a duplicate of an already
+                # existing file.
                 checksum = get_checksum(path)
                 try:
                     records = self.session.query(File).\
@@ -88,13 +89,12 @@ class Finder(object):
                 else:
                     if len(records) != 0:
                         dups = ", ".join(str(rec.id) for rec in records)
-                        logger.error(f"file '{path}' already in the storage"
+                        logger.error(f"file '{path}' already in the storage "
                                      f"area (see row(s): {dups}), "
                                      f"removing from buffer")
                         action_type = "alt"
 
-                # Execute pre-defined action for the file.  The standard action
-                # will be executed if there was no errors, otherwise
+                # Execute pre-defined action on the file.
                 action = self.dispatch[action_type]
                 try:
                     action.execute(path)
