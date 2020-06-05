@@ -88,9 +88,20 @@ class Move(Action):
         missing = required - set(config)
         if missing:
             raise ValueError(f"{', '.join(missing)} not provided.")
-
         self.src = os.path.abspath(config["src"])
         self.dst = os.path.abspath(config["dst"])
+        if self.src is None or self.dst is None:
+            messages = {
+                1: "source location not specified",
+                2: "destination location not specified",
+                3: "neither source nor destination location are specified"
+            }
+            score = 0
+            if self.src is None:
+                score += 1
+            if self.dst is None:
+                score += 2
+            raise ValueError(messages[score])
         for path in (self.src, self.dst):
             if not os.path.isdir(path):
                 raise ValueError(f"directory '{path}' not found.")

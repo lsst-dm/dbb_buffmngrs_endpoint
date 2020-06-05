@@ -42,7 +42,7 @@ class Finder(object):
         required = {"buffer", "storage", "session"}
         missing = required - set(config)
         if missing:
-            msg = f"Invalid configuration: {', '.join(missing)} not provided."
+            msg = f"invalid configuration: {', '.join(missing)} not provided"
             logger.critical(msg)
             raise ValueError(msg)
 
@@ -60,7 +60,9 @@ class Finder(object):
         self.storage = os.path.abspath(config["storage"])
         for path in (self.buffer, self.storage):
             if not os.path.isdir(path):
-                raise ValueError(f"directory '{path}' not found.")
+                msg = f"directory '{path}' not found"
+                logger.critical(msg)
+                raise ValueError()
 
         noop = Null(dict())
         self.dispatch = {
@@ -82,7 +84,7 @@ class Finder(object):
                     records = self.session.query(File).\
                         filter(File.checksum == checksum).all()
                 except SQLAlchemyError as ex:
-                    logger.error(f"Cannot check for duplicates: {ex}.")
+                    logger.error(f"cannot check for duplicates: {ex}")
                 else:
                     if len(records) != 0:
                         dups = ", ".join(str(rec.id) for rec in records)
@@ -97,7 +99,7 @@ class Finder(object):
                 try:
                     action.execute()
                 except RuntimeError as ex:
-                    logger.error(f"Action failed: {ex}.")
+                    logger.error(f"action failed: {ex}")
                     continue
 
                 if action_type == "alt":
@@ -111,13 +113,13 @@ class Finder(object):
                 try:
                     self.session.add(entry)
                 except SQLAlchemyError as ex:
-                    logger.error(f"Adding {action.path} failed: {ex}.")
+                    logger.error(f"adding {action.path} failed: {ex}")
                     action.undo()
                 else:
                     try:
                         self.session.commit()
                     except SQLAlchemyError as ex:
-                        logger.error(f"{ex}")
+                        logger.error(f"cannot commit changes: {ex}")
             time.sleep(self.pause)
 
 
