@@ -68,7 +68,7 @@ class Gen2Ingest(object):
         root = config["root"]
         mode = config.get("mode", "link")
         opts = dict(mode=mode)
-        self.task = IngestTask.perpareTask(root, **opts)
+        self.task = IngestTask.prepareTask(root, **opts)
 
     @property
     def version(self):

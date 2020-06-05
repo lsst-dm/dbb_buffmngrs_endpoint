@@ -97,7 +97,7 @@ class Finder(object):
                 # will be executed if there was no errors, otherwise
                 action = self.dispatch[action_type]
                 try:
-                    action.execute()
+                    action.execute(path)
                 except RuntimeError as ex:
                     logger.error(f"action failed: {ex}")
                     continue

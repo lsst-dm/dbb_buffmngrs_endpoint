@@ -193,6 +193,9 @@ class Delete(Action):
     This action in irreversible!  Rolling it back is not implemented.
     """
 
+    def __init__(self, config):
+        Action.__init__(self)
+
     def execute(self, path):
         """Execute action for a given file.
 

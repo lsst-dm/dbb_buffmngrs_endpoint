@@ -70,7 +70,7 @@ def main():
     # Read provided configuration or use the default one.
     if args.config is None:
         root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-        filename = os.path.normpath(os.path.join(root, "etc/ingestd.yaml"))
+        filename = os.path.normpath(os.path.join(root, "etc/config.yaml"))
     else:
         filename = args.config
     with open(filename, "r") as f:
@@ -96,12 +96,13 @@ def main():
     session = Session()
 
     # Start daemons monitoring directories where new files may appear.
-    module = importlib.import_module("actions")
+    module = importlib.import_module(
+        "python.lsst.dbb.buffmngrs.endpoint.actions")
     for cfg in config["finders"]:
         cfg["session"] = session
 
         # Configure standard and alternative file actions.
-        for type_, name in cfg["actions"].itmes():
+        for type_, name in cfg["actions"].items():
             try:
                 class_ = getattr(module, name)
             except AttributeError as ex:
@@ -122,9 +123,11 @@ def main():
 
         finder = mgr.Finder(cfg)
         t = threading.Thread(target=finder.run, daemon=True)
+        t.start()
 
     # Start daemons responsible for ingesting images to the database systems.
-    module = importlib.import_module("plugins")
+    module = importlib.import_module(
+        "python.lsst.dbb.buffmngrs.endpoint.plugins")
     for cfg in config["ingesters"]:
         cfg["session"] = session
 
@@ -147,6 +150,7 @@ def main():
 
         ingester = mgr.Ingester(cfg)
         t = threading.Thread(target=ingester.run, daemon=True)
+        t.start()
 
     while True:
         pass
