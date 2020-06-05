@@ -180,4 +180,36 @@ def scan(directory, blacklist=None):
 
 
 def parse(directory, blacklist=None):
-    pass
+    """Generate the file names in a directory tree.
+
+    Generate the file paths in a given directory tree excluding those files
+    that were blacklisted.
+
+    Parameters
+    ----------
+    directory : `str`
+        The root of the directory tree which need to be searched.
+    blacklist : `list` of `str`, optional
+        List of regular expressions file names should be match against. If a
+        filename matches any of the patterns in the list, file will be ignored.
+        By default, no file is ignored.
+
+    Returns
+    -------
+    generator object
+        An iterator over file paths.
+    """
+    if blacklist is None:
+        blacklist = []
+    for dirpath, dirnames, filenames in os.walk(directory):
+        manifests = [os.path.join(dirpath, f)
+                     for f in filenames if re.match("^rsync*log$", f)]
+        for manifest in manifests:
+            with open(manifest) as f:
+                for line in f:
+                    if not re.match("<f+++++++++", line):
+                        continue
+                    op, chng, fn, *rest = line.strip().split()
+                    if any(re.match(patt, fn) for patt in blacklist):
+                        continue
+                    yield fn
