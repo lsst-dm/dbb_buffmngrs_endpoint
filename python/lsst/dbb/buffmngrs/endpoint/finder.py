@@ -25,7 +25,6 @@ import os
 import re
 import time
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 from .actions import Null
 from .declaratives import File
 
@@ -57,8 +56,10 @@ class Finder(object):
                 raise ValueError(f"directory '{path}' not found.")
 
         noop = Null(dict())
-        self.std_action = config.get("standard", noop)
-        self.alt_action = config.get("alternative", noop)
+        self.dispatch = {
+            "std": config.get("standard", noop),
+            "alt": config.get("alternative", noop)
+        }
 
         self.blacklist = config.get("blacklist", [])
         self.pause = config.get("pause", 1)
@@ -66,60 +67,45 @@ class Finder(object):
     def run(self):
         while True:
             for path in self.search(self.buffer):
+                action_type = "std"
 
                 # Check if it is not a duplicate of an already existing file.
                 checksum = get_checksum(path)
                 try:
-                    query = self.session.query(File).\
-                        filter(File.checksum == checksum)
+                    records = self.session.query(File).\
+                        filter(File.checksum == checksum).all()
                 except SQLAlchemyError as ex:
                     logger.error(f"Cannot check for duplicates: {ex}.")
                 else:
-                    is_duplicate = False
-                    try:
-                        rec = query.one()
-                    except MultipleResultsFound:
-                        # Uh, oh, internal records indicate that there are
-                        # multiple duplicates of the file in the storage area.
-                        # It is should-not-happen kind of thing.
-                        dups = ", ".join(str(rec.id) for rec in query)
-                        logger.warning(f"Possible duplicates in rows: {dups}.")
-                        is_duplicate = True
-                    except NoResultFound:
-                        # According to internal records, the file is genuinely
-                        # new.  That's good, actually!
-                        pass
-                    else:
-                        # There is already a file with that checksum in the
-                        # storage area. Not good, but not tragic either.
-                        # Due to various glitches duplicates may pop up in
-                        # the buffer, but there are no redundant copies in
-                        # the storage area.
-                        logger.warning(f"File '{path}' already in the storage "
-                                       f"area, see '{rec.url}', row {rec.id}.")
-                        is_duplicate = True
-                    if is_duplicate:
-                        self.alt_action.execute(path)
-                        logger.info(f"Duplicate '{path}' removed.")
-                        continue
+                    if len(records) != 0:
+                        dups = ", ".join(str(rec.id) for rec in records)
+                        logger.error(f"file '{path}' already in the storage"
+                                     f"area (see row(s): {dups}), "
+                                     f"removing from buffer")
+                        action_type = "alt"
 
-                # Execute pre-defined action for the file.
+                # Execute pre-defined action for the file.  The standard action
+                # will be executed if there was no errors, otherwise
+                action = self.dispatch[action_type]
                 try:
-                    self.std_action.execute(path)
+                    action.execute()
                 except RuntimeError as ex:
                     logger.error(f"Action failed: {ex}.")
                     continue
 
+                if action_type == "alt":
+                    continue
+
                 # Insert data about file into the database.
                 ts = datetime.datetime.now()
-                entry = File(url=self.std_action.path,
+                entry = File(url=action.path,
                              checksum=checksum,
                              added_at=ts.isoformat(timespec="milliseconds"))
                 try:
                     self.session.add(entry)
                 except SQLAlchemyError as ex:
-                    logger.error(f"Adding {self.std_action.path} failed: {ex}.")
-                    self.std_action.undo()
+                    logger.error(f"Adding {action.path} failed: {ex}.")
+                    action.undo()
                 else:
                     try:
                         self.session.commit()
