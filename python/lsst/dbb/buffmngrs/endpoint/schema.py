@@ -28,6 +28,14 @@ schema = """
 type: object
 properties:
     database:
+        type: object
+        properties:
+            engine:
+                type: string
+            echo:
+                type: boolean
+        required:
+            - engine
     finders:
         type: array
         items:
@@ -39,29 +47,25 @@ properties:
                     type: string
                 blacklist:
                     anyOf:
-                        - type: null
                         - type: array
                           items:
-                              type: string
+                              types: string
+                        - type: "null"
                 actions:
                     type: object
                     properties:
                         standard:
-                            anyOf:
-                                - type: string
-                                - type: null
+                            type: string
                         alternative:
-                            anyOf:
-                                - type: string
-                                - type: null
+                            type: string
                 search_method:
                     type: string
                 pause:
                     type: integer
                     minimum: 0
-                required:
-                    - buffer
-                    - storage
+            required:
+                - buffer
+                - storage
     ingesters:
         type: array
         items:
@@ -74,6 +78,14 @@ properties:
                             type: string
                         config:
                             type: object
+                            properties:
+                                root:
+                                    type: string
+                            required:
+                                - root
+                    required:
+                        - name
+                        - config
                 file_status:
                     type: string
                 batch_size:
@@ -87,15 +99,19 @@ properties:
                 pause:
                     type: integer
                     minimum: 0
-                required:
-                    - plugin
+            required:
+                - plugin
     logging:
         type: object
         properties:
             file:
-                type: string
+                anyOf:
+                    - type: string
+                    - type: "null"
             format:
-                type: string
+                anyOf:
+                    - type: string
+                    - type: "null"
             level:
                 type: string
                 enum:
@@ -104,7 +120,7 @@ properties:
                     - WARNING
                     - ERROR
                     - CRITICAL
-    required:
-        - database
-        - ingesters
+required:
+    - database
+    - ingesters
 """
