@@ -18,11 +18,12 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 
-__all__ = ["File"]
+__all__ = ["Attempt", "File", "Status"]
 
 
 Base = declarative_base()
@@ -39,3 +40,31 @@ class File(Base):
     def __repr__(self):
         return f"<File(url='{self.url}', checksum='{self.checksum}, " \
                f"added_at='{self.added_at}')>"
+
+
+class Status(Base):
+    __tablename__ = "statuses"
+    id = Column(Integer, primary_key=True)
+    url = Column(String)
+    status = Column(String)
+    attempts = relationship("Attempt", back_populates="statuses",
+                            order_by="Attempt.id")
+
+    def __repr__(self):
+        return f"<Status(url='{self.url}', status='{self.status})>"
+
+
+class Attempt(Base):
+    __tablename__ = "attempts"
+    id = Column(Integer, primary_key=True)
+    version = Column(String)
+    made_at = Column(String(26))
+    duration = Column()
+    error = Column(String)
+    status_id = Column(Integer, ForeignKey("statuses.id"))
+    status = relationship("Status", back_populates="attempts")
+
+    def __repr__(self):
+        return f"<Attempt(version='{self.version}, " \
+               f"made_at='{self.made_at}', duration='{self.duration}', " \
+               f"error='{self.error}')>"
