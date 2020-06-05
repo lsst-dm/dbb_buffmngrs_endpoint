@@ -23,6 +23,7 @@ import hashlib
 import logging
 import os
 import re
+import sys
 import time
 from sqlalchemy.exc import SQLAlchemyError
 from .actions import Null
@@ -47,7 +48,13 @@ class Finder(object):
 
         self.session = config["session"]
 
-        self.search = scan
+        method = config.get("search_method", "scan")
+        try:
+            self.search = getattr(sys.modules[__name__], method)
+        except AttributeError as ex:
+            msg = f"unknown search method: '{method}'"
+            logger.critical(msg)
+            raise ValueError(msg)
 
         self.buffer = os.path.abspath(config["buffer"])
         self.storage = os.path.abspath(config["storage"])
