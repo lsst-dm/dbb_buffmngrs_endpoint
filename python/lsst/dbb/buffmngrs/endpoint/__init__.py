@@ -23,3 +23,4 @@ from .actions import *
 from .finder import *
 from .declaratives import *
 from .ingester import *
+from .schema import *
