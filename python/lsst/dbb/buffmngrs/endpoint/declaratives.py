@@ -36,3 +36,6 @@ class File(Base):
     checksum = Column(String(128))
     added_at = Column(String(26))
 
+    def __repr__(self):
+        return f"<File(url='{self.url}', checksum='{self.checksum}, " \
+               f"added_at='{self.added_at}')>"
