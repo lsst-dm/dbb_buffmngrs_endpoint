@@ -18,6 +18,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import datetime
 import logging
 import queue
 import threading
@@ -225,7 +226,7 @@ def worker(inp, out, err, task=None):
         if filename is None:
             break
 
-        start = time.time()
+        start = datetime.datetime.now()
         chn, msg = None, None
         try:
             task.execute(filename)
@@ -234,5 +235,8 @@ def worker(inp, out, err, task=None):
         else:
             chn, msg = out, ""
         finally:
-            dur = time.time() - start
-            chn.put(Result(filename, start, dur, msg))
+            dur = datetime.datetime.now() - start
+            chn.put(Result(filename,
+                           start.isoformat(timespec="milliseconds"),
+                           dur / datetime.timedelta(milliseconds=1),
+                           msg))
