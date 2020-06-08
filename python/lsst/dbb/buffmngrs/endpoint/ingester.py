@@ -75,7 +75,6 @@ class Ingester(object):
         missing = required - set(config)
         if missing:
             msg = f"invalid configuration: {', '.join(missing)} not provided"
-            logger.critical(msg)
             raise ValueError(msg)
         self.plugin = config["plugin"]
         self.session = config["session"]
@@ -111,7 +110,7 @@ class Ingester(object):
                     filter(Status.status == self.status).\
                     limit(self.batch_size)
             except SQLAlchemyError as ex:
-                logger.error(f"cannot retrieve files to process: {ex}")
+                logger.error(f"failed to retrieve files for processing: {ex}")
             else:
                 records = {rec.url: rec for rec in query}
 
@@ -193,7 +192,7 @@ class Ingester(object):
             query = self.session.query(File.url). \
                 filter(exists().where(File.url != Status.url))
         except (ProgrammingError, SQLAlchemyError) as ex:
-            logger.error(f"failed to add new files: {ex}")
+            logger.error(f"failed to check for new files: {ex}")
         else:
             for url in query:
                 rec = Status(url=url, status=status["untried"])
@@ -201,7 +200,7 @@ class Ingester(object):
             try:
                 self.session.commit()
             except SQLAlchemyError as ex:
-                logger.error(f"cannot add new files: {ex}")
+                logger.error(f"failed to add new files: {ex}")
 
     def _process(self, channel):
         """Process results of ingest attempts from a given channel.
