@@ -192,7 +192,7 @@ class Ingester(object):
         while not channel.empty():
             path, timestamp, duration, message = channel.get()
             attempt = {
-                "version": self.plugin.version(),
+                "task_ver": self.plugin.version(),
                 "made_at": timestamp,
                 "duration": duration,
                 "traceback": message,

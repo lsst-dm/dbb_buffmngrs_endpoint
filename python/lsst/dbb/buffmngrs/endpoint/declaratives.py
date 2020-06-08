@@ -57,7 +57,7 @@ class Status(Base):
 class Attempt(Base):
     __tablename__ = "attempts"
     id = Column(Integer, primary_key=True)
-    version = Column(String)
+    task_ver = Column(String(32))
     made_at = Column(String(26))
     duration = Column(Integer)
     traceback = Column(Text)
@@ -65,6 +65,6 @@ class Attempt(Base):
     status = relationship("Status", back_populates="attempts")
 
     def __repr__(self):
-        return f"<Attempt(version='{self.version}, " \
+        return f"<Attempt(task_ver='{self.task_ver}, " \
                f"made_at='{self.made_at}', duration='{self.duration}', " \
                f"traceback='{self.error}')>"
