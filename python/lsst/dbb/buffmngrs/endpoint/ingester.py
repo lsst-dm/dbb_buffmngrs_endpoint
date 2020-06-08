@@ -48,6 +48,27 @@ status = {
 
 
 class Ingester(object):
+    """Framework managing image ingest process.
+
+    Ingester manages the process of ingesting images to different database
+    systems.
+
+    It may operate in one of two modes: daemonic and non-daemonic. In the
+    default daemonic mode, it waits for new files and when they arrive it
+    attempts to ingest each file to a given database system.  In the
+    non-daemonic mode, it will terminate once it process all files with a
+    specified status.
+
+    Parameters
+    ----------
+    config : `dict`
+        Ingester configuration.
+
+    Raises
+    ------
+    ValueError
+        If required setting is missing or any
+    """
 
     def __init__(self, config):
         required = {"plugin", "session"}
@@ -69,6 +90,8 @@ class Ingester(object):
             raise ValueError(msg)
 
     def run(self):
+        """Start the framework.
+        """
         # Check if we are connected to the right database that is if the
         # required tables are available.
 
@@ -92,7 +115,7 @@ class Ingester(object):
             else:
                 records = {rec.url: rec for rec in query}
 
-            # Update their statuses and enqueue them for processing.
+            # Update statuses of the files and enqueue them for ingesting.
             for rec in records.values():
                 rec.status = status["awaits"]
             try:
@@ -129,26 +152,30 @@ class Ingester(object):
             # Process the results of the ingest attempts.
             processed = set()
 
-            # Update records for files for which the ingest attempt succeeded.
+            # Update statuses of the files for which ingest attempt was made
+            # and succeeded.
             attempts = self._process(out)
             for url, att in attempts.items():
                 records[url].status = status["success"]
                 records[url].attempts.append(att)
             processed.update(attempts)
 
-            # Update records for files for which the ingest attempt failed.
+            # Update statuses of the files for which ingest attempt was made
+            # but failed.
             attempts = self._process(err)
             for url, att in attempts.items():
                 records[url].status = status["failure"]
                 records[url].attempts.append(att)
             processed.update(attempts)
 
-            # Update records for files for which the ingest attempt failed
-            # other reasons, e.g. a worker was killed by an external process.
+            # Update statuses of the files for which the ingest attempt failed
+            # for other reasons, e.g. a worker was killed by an external
+            # process.
             unfinished = set(records) - processed
             for url in unfinished:
                 records[url].status = status["unknown"]
 
+            # Commit all changes to the database.
             try:
                 self.session.commit()
             except SQLAlchemyError as ex:
@@ -157,11 +184,10 @@ class Ingester(object):
             time.sleep(self.pause)
 
     def _fetch(self):
-        """Updates
+        """Fetch new files, if any.
 
-        Returns
-        -------
-
+        Queries the database for newly discovered files and enqueues them for
+        processing.
         """
         try:
             query = self.session.query(File.url). \
