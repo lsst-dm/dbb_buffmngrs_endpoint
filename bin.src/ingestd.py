@@ -3,14 +3,15 @@ import importlib
 import jsonschema
 import logging
 import os
-import threading
+import multiprocessing
+import time
 import yaml
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 import python.lsst.dbb.buffmngrs.endpoint as mgr
 
 
-logger = logging.getLogger("lsst.dbb.buffmngrs.handoff")
+logger = logging.getLogger("python.lsst.dbb.buffmngrs.endpoint")
 
 
 def parse_args():
@@ -64,45 +65,29 @@ def set_logger(options=None):
     handler.setFormatter(formatter)
 
 
-def main():
-    args = parse_args()
+def create_finders(configs):
+    """Create services responsible for finding new images.
 
-    # Read provided configuration or use the default one.
-    if args.config is None:
-        root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-        filename = os.path.normpath(os.path.join(root, "etc/config.yaml"))
-    else:
-        filename = args.config
-    with open(filename, "r") as f:
-        config = yaml.safe_load(f)
+    Parameters
+    ----------
+    configs : `list` of `dict`
+        List of configurations. For each provided configuration, a separate
+        ingest process will be created.
 
-    # Validate configuration, if requested.
-    if args.validate:
-        config_schema = yaml.safe_load(mgr.schema)
-        try:
-            jsonschema.validate(instance=config, schema=config_schema)
-        except jsonschema.ValidationError as ex:
-            raise ValueError(f"Configuration error: {ex.message}.")
+    Returns
+    -------
+    `list` of `multiprocessing.Process`
+        A sequence of processes which will keep discovering new images
+        at given locations.
+    """
+    module_name = "lsst.dbb.buffmngrs.endpoint.actions"
+    module = importlib.import_module(module_name)
 
-    # Set up a logger.
-    logger_options = config.get("logging", None)
-    set_logger(options=logger_options)
-    logger.info(f"Configuration read from '{filename}'.")
-
-    # Create a connection to the database.
-    cfg = config["database"]
-    engine = create_engine(cfg["engine"], echo=cfg["echo"])
-    Session = sessionmaker(bind=engine)
-    session = Session()
-
-    # Start daemons monitoring directories where new files may appear.
-    module = importlib.import_module(
-        "python.lsst.dbb.buffmngrs.endpoint.actions")
-    for cfg in config["finders"]:
-        cfg["session"] = session
+    processes = []
+    for config in configs:
 
         # Configure standard and alternative file actions.
-        for type_, name in cfg["actions"].items():
+        for type_, name in config["actions"].items():
             try:
                 class_ = getattr(module, name)
             except AttributeError as ex:
@@ -112,28 +97,46 @@ def main():
             else:
                 action_config = {}
                 if name == "Move":
-                    action_config["src"] = cfg["buffer"]
-                    action_config["dst"] = cfg["storage"]
+                    action_config["src"] = config["buffer"]
+                    action_config["dst"] = config["storage"]
                 try:
                     action = class_(action_config)
                 except ValueError as ex:
                     msg = f"{class_.__name__}: invalid configuration: {ex}."
                     raise RuntimeError(msg)
-                cfg[type_] = action
+                config[type_] = action
 
-        finder = mgr.Finder(cfg)
-        t = threading.Thread(target=finder.run, daemon=True)
-        t.start()
+        finder = mgr.Finder(config)
+        p = multiprocessing.Process(target=finder.run)
+        processes.append(p)
 
-    # Start daemons responsible for ingesting images to the database systems.
-    module = importlib.import_module(
-        "python.lsst.dbb.buffmngrs.endpoint.plugins")
-    for cfg in config["ingesters"]:
-        cfg["session"] = session
+    return processes
+
+
+def create_ingesters(configs):
+    """Create services responsible for ingesting images.
+
+    Parameters
+    ----------
+    configs : `list` of `dict`
+        List of configurations. For each provided configuration, a separate
+        ingest process will be created.
+
+    Returns
+    -------
+    `list` of `multiprocessing.Process`
+        A sequence of processes which will keep ingesting images to given
+        database systems once started.
+    """
+    module_name = "lsst.dbb.buffmngrs.endpoint.plugins"
+    module = importlib.import_module(module_name)
+
+    processes = []
+    for config in configs:
 
         # Configure ingest plugin.
-        plugin_name = cfg["plugin"]["name"]
-        plugin_config = cfg["plugin"]["config"]
+        plugin_name = config["plugin"]["name"]
+        plugin_config = config["plugin"]["config"]
         try:
             class_ = getattr(module, plugin_name)
         except AttributeError as ex:
@@ -146,14 +149,97 @@ def main():
             except ValueError as ex:
                 msg = f"{class_.__name__}: invalid configuration: {ex}."
                 raise RuntimeError(msg)
-            cfg["plugin"] = plugin
+            config["plugin"] = plugin
 
-        ingester = mgr.Ingester(cfg)
-        t = threading.Thread(target=ingester.run, daemon=True)
-        t.start()
+        ingester = mgr.Ingester(config)
+        p = multiprocessing.Process(target=ingester.run)
+        processes.append(p)
 
-    while True:
-        pass
+    return processes
+
+
+def main():
+    """Entry point.
+    """
+    args = parse_args()
+
+    # Read provided configuration or use the default one.
+    if args.config is None:
+        root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+        filename = os.path.normpath(os.path.join(root, "etc/config.yaml"))
+    else:
+        filename = args.config
+    with open(filename, "r") as f:
+        master_config = yaml.safe_load(f)
+
+    # Validate configuration, if requested.
+    if args.validate:
+        config_schema = yaml.safe_load(mgr.schema)
+        try:
+            jsonschema.validate(instance=master_config, schema=config_schema)
+        except jsonschema.ValidationError as ex:
+            raise ValueError(f"Configuration error: {ex.message}.")
+
+    # Set up a logger.
+    logger_options = master_config.get("logging", None)
+    set_logger(options=logger_options)
+    logger.info(f"Configuration read from '{filename}'.")
+
+    # Establish connection with the database and check if required tables
+    # exists.
+    config = master_config["database"]
+    engine = create_engine(config["engine"], echo=config["echo"])
+
+    required = {"files", "statuses", "attempts"}
+    available = set(inspect(engine).get_table_names())
+    missing = required - available
+    if missing:
+        msg = f"Table(s) {', '.join(missing)} not found in the database."
+        logger.error(msg)
+        raise RuntimeError(msg)
+
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    # Configure micro services responsible for finding new images and ingesting
+    # them to different database systems.
+    services = []
+
+    logger.info("Configuring Finders...")
+    configs = master_config.get("finders", None)
+    if configs is not None:
+        for config in configs:
+            config["session"] = session
+        finders = create_finders(configs)
+        services.extend(finders)
+
+    logger.info("Configuring Ingesters...")
+    configs = master_config.get("ingesters", None)
+    if configs is not None:
+        for config in configs:
+            config["session"] = session
+        ingesters = create_ingesters(configs)
+        services.extend(ingesters)
+    else:
+        msg = "Service requires at least one ingester, none provided."
+        logger.error(msg)
+        raise ValueError(msg)
+
+    # Start all configured micro services.
+    try:
+        logger.info("Initializing service...")
+        for s in services:
+            s.start()
+        logger.info("Initialization completed, service is up and running.")
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        logger.info("Shutdown requested...exiting.")
+        for s in services:
+            s.terminate()
+    finally:
+        for s in services:
+            s.join()
 
 
 if __name__ == "__main__":
