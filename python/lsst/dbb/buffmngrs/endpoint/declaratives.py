@@ -31,7 +31,6 @@ Base = declarative_base()
 
 class File(Base):
     __tablename__ = "files"
-
     id = Column(Integer, primary_key=True)
     url = Column(String(255))
     checksum = Column(String(128))
@@ -47,8 +46,7 @@ class Status(Base):
     id = Column(Integer, primary_key=True)
     url = Column(String)
     status = Column(String)
-    attempts = relationship("Attempt", back_populates="statuses",
-                            order_by="Attempt.id")
+    attempts = relationship("Attempt")
 
     def __repr__(self):
         return f"<Status(url='{self.url}', status='{self.status})>"
@@ -62,7 +60,6 @@ class Attempt(Base):
     duration = Column(Integer)
     traceback = Column(Text)
     status_id = Column(Integer, ForeignKey("statuses.id"))
-    status = relationship("Status", back_populates="attempts")
 
     def __repr__(self):
         return f"<Attempt(task_ver='{self.task_ver}, " \
