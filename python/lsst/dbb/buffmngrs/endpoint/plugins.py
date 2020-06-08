@@ -18,8 +18,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import importlib
 import logging
-from lsst.pipe.tasks.ingest import IngestTask
+import lsst.pipe.tasks.ingest as ingest
 
 __all__ = ["NullIngest", "Gen2Ingest"]
 
@@ -36,7 +37,6 @@ class NullIngest(object):
     def __init__(self, config):
         pass
 
-    @property
     def version(self):
         return ""
 
@@ -68,23 +68,24 @@ class Gen2Ingest(object):
         root = config["root"]
         mode = config.get("mode", "link")
         opts = dict(mode=mode)
-        self.task = IngestTask.prepareTask(root, **opts)
+        self.task = ingest.IngestTask.prepareTask(root, **opts)
 
-    @property
+        pkg = importlib.import_module(ingest.__package__)
+        self._version = "not available"
+        try:
+            self._version = getattr(pkg, "__version__")
+        except AttributeError:
+            logger.warning("failed to identified plugin version")
+
     def version(self):
-        """Version of the LSST ingest task.
+        """Return the version of the LSST ingest task.
 
         Returns
         -------
         `str`
             Version of the LSST ingest task used for the ingest attempt.
         """
-        try:
-            ver = getattr(lsst.pipe.tasks, "__version__")
-        except AttributeError:
-            return "not available"
-        else:
-            return ver
+        return self._version
 
     def execute(self, filename):
         """Make an attempt to ingest the file.
