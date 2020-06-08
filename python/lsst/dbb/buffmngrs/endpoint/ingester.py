@@ -193,7 +193,7 @@ class Ingester(object):
         """
         try:
             query = self.session.query(File.url). \
-                filter(exists().where(File.url != Status.url))
+                filter(~exists().where(File.url == Status.url))
         except (ProgrammingError, SQLAlchemyError) as ex:
             logger.error(f"failed to check for new files: {ex}")
         else:
