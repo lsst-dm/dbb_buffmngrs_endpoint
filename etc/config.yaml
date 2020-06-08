@@ -1,26 +1,26 @@
 database:
-  engine: postgresql://mxk@localhost/testdb
-  echo: false
+  engine: "postgres://tester:password@localhost:5432/test"
+#  echo: false
 finders:
-  - buffer: /home/mxk/foo
-    storage: /home/mxk/qux
-    blacklist: null
+  - buffer: /data/buffer
+    storage: /data/storage
+#    blacklist: null
     actions:
       standard: Move
       alternative: Delete
-    search_method: scan
-    pause: 1
+#    search_method: scan
+#    pause: 1
 ingesters:
   - plugin:
       name: Gen2Ingest
       config:
-        root: /tmp/gen2repo
-    file_status: untried
-    batch_size: 10
-    daemon: true
-    pool_size: 1
-    pause: 1
-logging:
-  file: null
-  format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
-  level: WARNING
+        root: /data/gen2repo
+#    file_status: untried
+#    batch_size: 10
+#    daemon: true
+#    pool_size: 1
+#    pause: 1
+#logging:
+#  file: /var/log/endpoint.log
+#  format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
+#  level: WARNING
