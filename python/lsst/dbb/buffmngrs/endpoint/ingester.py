@@ -59,11 +59,14 @@ class Ingester(object):
         self.plugin = config["plugin"]
         self.session = config["session"]
 
-        self.status = config.get("file_status", status["untried"])
         self.batch_size = config.get("batch_size", 10)
-        self.pool_size = config.get("pool_size", 1)
-        self.pause = config.get("pause", 1)
         self.daemon = config.get("daemon", True)
+        self.pause = config.get("pause", 1)
+        self.pool_size = config.get("pool_size", 1)
+        self.status = config.get("file_status", status["untried"])
+        if self.status == status["success"]:
+            msg = f"invalid status: {self.status}"
+            raise ValueError(msg)
 
     def run(self):
         # Check if we are connected to the right database that is if the
