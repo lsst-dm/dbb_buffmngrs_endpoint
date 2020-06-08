@@ -23,6 +23,7 @@ import logging
 import queue
 import threading
 import time
+import traceback
 from collections import namedtuple
 from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
 from sqlalchemy.sql import exists
@@ -194,7 +195,7 @@ class Ingester(object):
                 "version": self.plugin.version(),
                 "made_at": timestamp,
                 "duration": duration,
-                "error": message,
+                "traceback": message,
             }
             attempts[path] = Attempt(**attempt)
         return attempts
@@ -230,8 +231,8 @@ def worker(inp, out, err, task=None):
         chn, msg = None, None
         try:
             task.execute(filename)
-        except RuntimeError as ex:
-            chn, msg = err, f"{ex}"
+        except RuntimeError:
+            chn, msg = err, f"{traceback.format_exc()}"
         else:
             chn, msg = out, ""
         finally:

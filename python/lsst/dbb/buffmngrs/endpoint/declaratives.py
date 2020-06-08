@@ -18,7 +18,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -59,12 +59,12 @@ class Attempt(Base):
     id = Column(Integer, primary_key=True)
     version = Column(String)
     made_at = Column(String(26))
-    duration = Column()
-    error = Column(String)
+    duration = Column(Integer)
+    traceback = Column(Text)
     status_id = Column(Integer, ForeignKey("statuses.id"))
     status = relationship("Status", back_populates="attempts")
 
     def __repr__(self):
         return f"<Attempt(version='{self.version}, " \
                f"made_at='{self.made_at}', duration='{self.duration}', " \
-               f"error='{self.error}')>"
+               f"traceback='{self.error}')>"
