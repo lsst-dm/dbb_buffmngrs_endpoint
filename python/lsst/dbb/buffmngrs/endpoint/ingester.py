@@ -111,8 +111,18 @@ class Ingester(object):
                     limit(self.batch_size)
             except SQLAlchemyError as ex:
                 logger.error(f"failed to retrieve files for processing: {ex}")
+                time.sleep(self.pause)
+                continue
             else:
                 records = {rec.url: rec for rec in query}
+            if not records:
+                msg = f"No files with status '{self.status}' to process, "
+                if not self.daemon:
+                    logger.debug(msg + "terminating.")
+                    break
+                logger.debug(msg + f"next check in {self.pause} sec.")
+                time.sleep(self.pause)
+                continue
 
             # Update statuses of the files and enqueue them for ingesting.
             for rec in records.values():
@@ -122,15 +132,8 @@ class Ingester(object):
             except SQLAlchemyError as ex:
                 logger.error(f"cannot commit updates: {ex}")
             else:
-                for rec in records:
-                    inp.put(rec.url)
-
-            if inp.empty():
-                logger.debug("no files to process")
-                if not self.daemon:
-                    break
-                time.sleep(self.pause)
-                continue
+                for url in records:
+                    inp.put(url)
 
             # Create a pool of workers to ingest the files. The pool will be
             # freed once processing is completed.
