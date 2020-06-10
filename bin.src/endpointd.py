@@ -189,7 +189,7 @@ def main():
     # Establish connection with the database and check if required tables
     # exists.
     config = master_config["database"]
-    engine = create_engine(config["engine"], echo=config["echo"])
+    engine = create_engine(config["engine"], echo=config.get("echo", False))
 
     required = {"files", "statuses", "attempts"}
     available = set(inspect(engine).get_table_names())
