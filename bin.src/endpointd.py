@@ -9,10 +9,10 @@ import time
 import yaml
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
-import python.lsst.dbb.buffmngrs.endpoint as mgr
+import lsst.dbb.buffmngrs.endpoint as mgr
 
 
-logger = logging.getLogger("python.lsst.dbb.buffmngrs.endpoint")
+logger = logging.getLogger("lsst.dbb.buffmngrs.endpoint")
 
 
 def parse_args():
