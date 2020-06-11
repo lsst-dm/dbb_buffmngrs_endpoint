@@ -40,10 +40,10 @@ Result = namedtuple('Result', ['filename', 'timestamp', 'duration', 'message'])
 logger = logging.getLogger(__name__)
 status = {
     "untried": "UNTRIED",
-    "awaits": "AWAITS",
+    "awaits": "AWAITING",
     "success": "SUCCESS",
     "failure": "FAILURE",
-    "unknown": "INCOMPLETE",
+    "unknown": "INTERRUPTED",
 }
 
 
