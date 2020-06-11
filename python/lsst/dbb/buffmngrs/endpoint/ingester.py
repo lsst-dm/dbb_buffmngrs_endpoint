@@ -27,7 +27,7 @@ import traceback
 from collections import namedtuple
 from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
 from sqlalchemy.sql import exists
-from .declaratives import Attempt, File, Status
+from .declaratives import File, attempt_creator, status_creator
 from .plugins import NullIngest
 
 
@@ -79,6 +79,10 @@ class Ingester(object):
         self.plugin = config["plugin"]
         self.session = config["session"]
 
+        prefix = config["tables"]["prefix"]
+        self.Attempt = attempt_creator(prefix)
+        self.Status = status_creator(prefix)
+
         self.batch_size = config.get("batch_size", 10)
         self.daemon = config.get("daemon", True)
         self.pause = config.get("pause", 1)
@@ -104,10 +108,9 @@ class Ingester(object):
                 self._fetch()
 
             # Grab a bunch of files which need to be (re)ingested.
-            records = {}
             try:
-                query = self.session.query(Status).\
-                    filter(Status.status == self.status).\
+                query = self.session.query(self.Status).\
+                    filter(self.Status.status == self.status).\
                     limit(self.batch_size)
             except SQLAlchemyError as ex:
                 logger.error(f"failed to retrieve files for processing: {ex}")
@@ -193,12 +196,12 @@ class Ingester(object):
         """
         try:
             query = self.session.query(File.url). \
-                filter(~exists().where(File.url == Status.url))
+                filter(~exists().where(File.url == self.Status.url))
         except (ProgrammingError, SQLAlchemyError) as ex:
             logger.error(f"failed to check for new files: {ex}")
         else:
             for url in query:
-                rec = Status(url=url, status=status["untried"])
+                rec = self.Status(url=url, status=status["untried"])
                 self.session.add(rec)
             try:
                 self.session.commit()
@@ -228,7 +231,7 @@ class Ingester(object):
                 "duration": duration,
                 "traceback": message,
             }
-            attempts[path] = Attempt(**attempt)
+            attempts[path] = self.Attempt(**attempt)
         return attempts
 
 

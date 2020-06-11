@@ -23,7 +23,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 
-__all__ = ["Attempt", "File", "Status"]
+__all__ = ["File", "attempt_creator", "status_creator"]
 
 
 Base = declarative_base()
@@ -32,36 +32,60 @@ Base = declarative_base()
 class File(Base):
     __tablename__ = "files"
     id = Column(Integer, primary_key=True)
-    url = Column(String(255))
-    checksum = Column(String(128))
-    added_at = Column(String(26))
+    url = Column(String)
+    checksum = Column(String)
+    added_at = Column(String)
 
     def __repr__(self):
         return f"<File(url='{self.url}', checksum='{self.checksum}, " \
                f"added_at='{self.added_at}')>"
 
 
-class Status(Base):
-    __tablename__ = "statuses"
-    id = Column(Integer, primary_key=True)
-    url = Column(String)
-    status = Column(String)
-    attempts = relationship("Attempt")
+def status_creator(prefix):
+    """Create a declarative for ingest statuses.
 
-    def __repr__(self):
-        return f"<Status(url='{self.url}', status='{self.status})>"
+    Parameters
+    ----------
+    prefix: `str`
+        A prefix identifying the database table name which will be used to
+        store ingest statuses.
+
+    Returns
+    -------
+    `sqlalchemy.ext.declarative.api.DeclarativeMeta`
+        A declarative (class), a Pythonic representation of database table.
+    """
+    attributes = {
+        "__tablename__": f"{prefix}_statuses",
+        "id": Column(Integer, primary_key=True),
+        "url": Column(String),
+        "status": Column(String),
+        "attempts": relationship(f"{prefix.capitalize()}Attempt"),
+    }
+    return type(f"{prefix.capitalize()}Status", (Base,), attributes)
 
 
-class Attempt(Base):
-    __tablename__ = "attempts"
-    id = Column(Integer, primary_key=True)
-    task_ver = Column(String(32))
-    made_at = Column(String(26))
-    duration = Column(Integer)
-    traceback = Column(Text)
-    status_id = Column(Integer, ForeignKey("statuses.id"))
+def attempt_creator(prefix):
+    """Create a declarative for ingest attempts.
 
-    def __repr__(self):
-        return f"<Attempt(task_ver='{self.task_ver}, " \
-               f"made_at='{self.made_at}', duration='{self.duration}', " \
-               f"traceback='{self.error}')>"
+    Parameters
+    ----------
+    prefix: `str`
+        A prefix identifying the database table name which will be used to
+        store ingest attempts.
+
+    Returns
+    -------
+    `sqlalchemy.ext.declarative.api.DeclarativeMeta`
+        A declarative (class), a Pythonic representation of database table.
+    """
+    attributes = {
+        "__tablename__": f"{prefix}_attempts",
+        "id": Column(Integer, primary_key=True),
+        "task_ver": Column(String),
+        "made_at": Column(String),
+        "duration": Column(Integer),
+        "traceback": Column(Text),
+        "status_id": Column(Integer, ForeignKey(f"{prefix}_statuses.id")),
+    }
+    return type(f"{prefix.capitalize()}Attempt", (Base,), attributes)
