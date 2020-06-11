@@ -262,7 +262,9 @@ def worker(inp, out, err, task=None):
         chn, msg = None, None
         try:
             task.execute(filename)
-        except RuntimeError:
+        except:
+            # No idea what kind of exception different LSST task can throw,
+            # hence bare exception here.
             chn, msg = err, f"{traceback.format_exc()}"
         else:
             chn, msg = out, ""
