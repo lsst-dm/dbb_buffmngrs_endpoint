@@ -1,0 +1,18 @@
+database:
+#  engine: "sqlite:////home/mxk/tmp/hsc/test.db"
+  engine: "postgres://tester:password@localhost:5432/test"
+#  echo: false
+finder:
+  buffer: /home/mxk/tmp/hsc/data/buffer
+  storage: /home/mxk/tmp/hsc/data/storage
+#  blacklist: null
+  actions:
+    standard: Move
+    alternative: Delete
+#  search_method: scan
+#  pause: 1
+logging:
+#  file: null
+#  format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
+#  level: WARNING
+  level: DEBUG

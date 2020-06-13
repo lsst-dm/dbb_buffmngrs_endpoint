@@ -25,10 +25,10 @@ import threading
 import time
 import traceback
 from collections import namedtuple
-from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import exists
-from .declaratives import File, attempt_creator, status_creator
 from .plugins import NullIngest
+from ..declaratives import File, attempt_creator, status_creator
 
 
 __all__ = ["Ingester"]
@@ -90,6 +90,7 @@ class Ingester(object):
         self.status = config.get("file_status", status["untried"])
         if self.status == status["success"]:
             msg = f"invalid status: {self.status}"
+            logger.error(msg)
             raise ValueError(msg)
 
     def run(self):
@@ -119,7 +120,7 @@ class Ingester(object):
             else:
                 records = {rec.url: rec for rec in query}
             if not records:
-                msg = f"No files with status '{self.status}' to process, "
+                msg = f"no files with status '{self.status}' to process, "
                 if not self.daemon:
                     logger.debug(msg + "terminating.")
                     break
@@ -197,7 +198,7 @@ class Ingester(object):
         try:
             query = self.session.query(File.url). \
                 filter(~exists().where(File.url == self.Status.url))
-        except (ProgrammingError, SQLAlchemyError) as ex:
+        except SQLAlchemyError as ex:
             logger.error(f"failed to check for new files: {ex}")
         else:
             for url in query:

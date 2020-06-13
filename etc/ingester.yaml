@@ -1,0 +1,21 @@
+database:
+#  engine: "sqlite:////home/mxk/tmp/hsc/test.db"
+  engine: "postgres://tester:password@localhost:5432/test"
+#  echo: false
+ingester:
+  tables:
+    prefix: gen2
+  plugin:
+    name: Gen2Ingest
+    config:
+      root: /home/mxk/tmp/hsc/data/gen2repo
+# file_status: untried
+# batch_size: 10
+# daemon: true
+# pool_size: 1
+# pause: 1
+logging:
+#  file: null
+#  format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
+#  level: WARNING
+  level: DEBUG
