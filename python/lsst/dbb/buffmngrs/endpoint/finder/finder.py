@@ -27,7 +27,7 @@ import sys
 import time
 from sqlalchemy.exc import SQLAlchemyError
 from .actions import Null
-from .declaratives import File
+from ..declaratives import file_creator
 
 
 __all__ = ["Finder"]
@@ -46,6 +46,14 @@ class Finder(object):
             logger.error(msg)
             raise ValueError(msg)
         self.session = config["session"]
+
+        required = {"file"}
+        missing = required - set(config["orms"])
+        if missing:
+            msg = f"invalid ORMs: {', '.join(missing)} not provided"
+            logger.error(msg)
+            raise ValueError(msg)
+        self.File = file_creator(config["orms"])
 
         method = config.get("search_method", "scan")
         try:
@@ -81,8 +89,8 @@ class Finder(object):
                 logger.debug(f"checking if not already in storage area")
                 checksum = get_checksum(path)
                 try:
-                    records = self.session.query(File).\
-                        filter(File.checksum == checksum).all()
+                    records = self.session.query(self.File).\
+                        filter(self.File.checksum == checksum).all()
                 except SQLAlchemyError as ex:
                     logger.error(f"cannot check for duplicates: {ex}")
                 else:
@@ -107,9 +115,11 @@ class Finder(object):
 
                 logger.debug(f"updating database entries: {action}")
                 ts = datetime.datetime.now()
-                entry = File(url=action.path,
-                             checksum=checksum,
-                             added_at=ts.isoformat(timespec="milliseconds"))
+                entry = self.File(
+                    url=action.path,
+                    checksum=checksum,
+                    added_at=ts.isoformat(timespec="milliseconds")
+                )
                 try:
                     self.session.add(entry)
                 except SQLAlchemyError as ex:

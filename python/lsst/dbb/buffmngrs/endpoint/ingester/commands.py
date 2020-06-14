@@ -29,7 +29,7 @@ def start(filename, validate):
     with open(filename) as f:
         configuration = yaml.safe_load(f)
     if validate:
-        schema = yaml.safe_load(schemas.finder)
+        schema = yaml.safe_load(schemas.ingester)
         try:
             jsonschema.validate(instance=configuration, schema=schema)
         except jsonschema.ValidationError as ex:
@@ -44,20 +44,24 @@ def start(filename, validate):
     config = configuration["database"]
     engine = create_engine(config["engine"], echo=config.get("echo", False))
 
-    required = {"files"}
+    logger.info("checking if required tables exist...")
+    required = {table for table in config["orms"].values()}
     available = set(inspect(engine).get_table_names())
     missing = required - available
     if missing:
-        msg = f"Table(s) {', '.join(missing)} not found in the database."
+        msg = f"table(s) {', '.join(missing)} not found in the database"
         logger.error(msg)
         raise RuntimeError(msg)
 
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    # Configure Ingester.
+    mapper = config["orms"]
+
+    logger.info("setting up Ingester...")
     config = configuration["ingester"]
     config["session"] = session
+    config["orms"] = mapper
 
     # Configure ingest plugin.
     package_name = "lsst.dbb.buffmngrs.endpoint.ingester"

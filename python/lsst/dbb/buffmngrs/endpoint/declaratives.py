@@ -23,32 +23,32 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 
-__all__ = ["File", "attempt_creator", "status_creator"]
+__all__ = ["attempt_creator", "file_creator", "status_creator"]
 
 
 Base = declarative_base()
 
 
-class File(Base):
-    __tablename__ = "files"
-    id = Column(Integer, primary_key=True)
-    url = Column(String)
-    checksum = Column(String)
-    added_at = Column(String)
+def file_creator(orms):
+    """Declarative for database file entries.
+    """
+    attributes = {
+        "__tablename__": orms["file"],
+        "id": Column(Integer, primary_key=True),
+        "url": Column(String),
+        "checksum": Column(String),
+        "added_at": Column(String),
+    }
+    return type("File", (Base,), attributes)
 
-    def __repr__(self):
-        return f"<File(url='{self.url}', checksum='{self.checksum}, " \
-               f"added_at='{self.added_at}')>"
 
-
-def status_creator(prefix):
-    """Create a declarative for ingest statuses.
+def status_creator(orms):
+    """Create a declarative for database ingest statuses.
 
     Parameters
     ----------
-    prefix: `str`
-        A prefix identifying the database table name which will be used to
-        store ingest statuses.
+    orms : `dict`
+        A mapping between roles and database table names.
 
     Returns
     -------
@@ -56,23 +56,22 @@ def status_creator(prefix):
         A declarative (class), a Pythonic representation of database table.
     """
     attributes = {
-        "__tablename__": f"{prefix}_statuses",
+        "__tablename__": orms["status"],
         "id": Column(Integer, primary_key=True),
         "url": Column(String),
         "status": Column(String),
-        "attempts": relationship(f"{prefix.capitalize()}Attempt"),
+        "attempts": relationship("Attempt"),
     }
-    return type(f"{prefix.capitalize()}Status", (Base,), attributes)
+    return type("Status", (Base,), attributes)
 
 
-def attempt_creator(prefix):
-    """Create a declarative for ingest attempts.
+def attempt_creator(orms):
+    """Create a declarative for database ingest attempts.
 
     Parameters
     ----------
-    prefix: `str`
-        A prefix identifying the database table name which will be used to
-        store ingest attempts.
+    orms : `dict`
+        Name of the table in the database.
 
     Returns
     -------
@@ -80,12 +79,12 @@ def attempt_creator(prefix):
         A declarative (class), a Pythonic representation of database table.
     """
     attributes = {
-        "__tablename__": f"{prefix}_attempts",
+        "__tablename__": orms["attempt"],
         "id": Column(Integer, primary_key=True),
         "task_ver": Column(String),
         "made_at": Column(String),
         "duration": Column(Integer),
         "traceback": Column(Text),
-        "status_id": Column(Integer, ForeignKey(f"{prefix}_statuses.id")),
+        "status_id": Column(Integer, ForeignKey(f"{orms['status']}.id")),
     }
-    return type(f"{prefix.capitalize()}Attempt", (Base,), attributes)
+    return type("Attempt", (Base,), attributes)

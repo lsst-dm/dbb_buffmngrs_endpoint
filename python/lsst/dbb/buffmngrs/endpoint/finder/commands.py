@@ -48,8 +48,8 @@ def start(filename, validate):
     config = configuration["database"]
     engine = create_engine(config["engine"], echo=config.get("echo", False))
 
-    logger.info("checking tables availability...")
-    required = {"files"}
+    logger.info("checking if required table exists...")
+    required = {table for table in config["orms"].values()}
     available = set(inspect(engine).get_table_names())
     missing = required - available
     if missing:
@@ -60,9 +60,12 @@ def start(filename, validate):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    logger.info("setting up finder...")
+    mapper = config["orms"]
+
+    logger.info("setting up Finder...")
     config = configuration["finder"]
     config["session"] = session
+    config["orms"] = mapper
 
     # Set up standard and alternative file actions.
     package_name = "lsst.dbb.buffmngrs.endpoint.finder"

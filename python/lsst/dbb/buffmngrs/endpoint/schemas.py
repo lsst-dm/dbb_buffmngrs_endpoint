@@ -32,10 +32,18 @@ properties:
         properties:
             engine:
                 type: string
+            orms:
+                type: object
+                properties:
+                    file:
+                        type: string
+                required:
+                    - file
             echo:
                 type: boolean
         required:
             - engine
+            - orms
     finder:
         type: object
         properties:
@@ -70,6 +78,7 @@ required:
 """
 
 ingester = """
+---
 type: object
 properties:
     database:
@@ -77,10 +86,24 @@ properties:
         properties:
             engine:
                 type: string
+            orms:
+                type: object
+                properties:
+                    file:
+                        type: string
+                    status:
+                        type: string
+                    attempt:
+                        type: string
+                required:
+                    - file
+                    - status
+                    - attempt
             echo:
                 type: boolean
         required:
             - engine
+            - orms
     ingester:
         type: object
         properties:

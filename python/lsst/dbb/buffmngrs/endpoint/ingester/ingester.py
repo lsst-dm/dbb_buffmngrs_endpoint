@@ -28,7 +28,7 @@ from collections import namedtuple
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import exists
 from .plugins import NullIngest
-from ..declaratives import File, attempt_creator, status_creator
+from ..declaratives import attempt_creator, file_creator, status_creator
 
 
 __all__ = ["Ingester"]
@@ -71,17 +71,24 @@ class Ingester(object):
     """
 
     def __init__(self, config):
-        required = {"plugin", "session"}
+        required = {"plugin", "orms", "session"}
         missing = required - set(config)
         if missing:
             msg = f"invalid configuration: {', '.join(missing)} not provided"
+            logger.error(msg)
             raise ValueError(msg)
         self.plugin = config["plugin"]
         self.session = config["session"]
 
-        prefix = config["tables"]["prefix"]
-        self.Attempt = attempt_creator(prefix)
-        self.Status = status_creator(prefix)
+        required = {"attempt", "file", "status"}
+        missing = required - set(config["orms"])
+        if missing:
+            msg = f"invalid ORMs: {', '.join(missing)} not provided"
+            logger.error(msg)
+            raise ValueError(msg)
+        self.File = file_creator(config["orms"])
+        self.Attempt = attempt_creator(config["orms"])
+        self.Status = status_creator(config["orms"])
 
         self.batch_size = config.get("batch_size", 10)
         self.daemon = config.get("daemon", True)
@@ -196,8 +203,8 @@ class Ingester(object):
         processing.
         """
         try:
-            query = self.session.query(File.url). \
-                filter(~exists().where(File.url == self.Status.url))
+            query = self.session.query(self.File.url). \
+                filter(~exists().where(self.File.url == self.Status.url))
         except SQLAlchemyError as ex:
             logger.error(f"failed to check for new files: {ex}")
         else:
