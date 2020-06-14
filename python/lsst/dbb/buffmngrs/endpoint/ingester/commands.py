@@ -40,7 +40,7 @@ def start(filename, validate):
     config = configuration.get("logging", None)
     setup_logger(logging.getLogger(), options=config)
 
-    # Configure database connection.
+    logger.info("setting up database connection...")
     config = configuration["database"]
     engine = create_engine(config["engine"], echo=config.get("echo", False))
 
@@ -78,5 +78,6 @@ def start(filename, validate):
             raise RuntimeError(msg)
         config["plugin"] = plugin
 
+    logger.info("starting Ingester...")
     ingester = Ingester(config)
     ingester.run()

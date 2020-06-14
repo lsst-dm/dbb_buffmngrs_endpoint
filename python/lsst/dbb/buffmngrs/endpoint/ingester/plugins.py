@@ -66,7 +66,7 @@ class Gen2Ingest(object):
         missing = required - set(config)
         if missing:
             msg = f"Invalid configuration: {', '.join(missing)} not provided."
-            logger.critical(msg)
+            logger.error(msg)
             raise ValueError(msg)
         root = config["root"]
         mode = config.get("mode", "link")
@@ -120,7 +120,7 @@ class Gen3Ingest(object):
         missing = required - set(config)
         if missing:
             msg = f"invalid configuration: {', '.join(missing)} not provide."
-            logger.critical(msg)
+            logger.error(msg)
             raise ValueError(msg)
         root = config["root"]
 

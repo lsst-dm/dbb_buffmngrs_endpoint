@@ -60,6 +60,10 @@ class Null(Action):
         """
         pass
 
+    def __repr__(self):
+        config = dict()
+        return f"{self.__class__.__name__}('{config}')"
+
 
 class Move(Action):
     """Move files from one location (src) to another location (dst).
@@ -186,6 +190,10 @@ class Move(Action):
             os.chdir(cwd)
             self.old, self.new = None, None
 
+    def __repr__(self):
+        config = dict(src=self.src, dst=self.dst)
+        return f"{self.__class__.__name__}('{config}')"
+
 
 class Delete(Action):
     """Delete a file.
@@ -221,3 +229,7 @@ class Delete(Action):
             When called.
         """
         raise NotImplementedError("Action cannot be rolled back.")
+
+    def __repr__(self):
+        config = dict()
+        return f"{self.__class__.__name__}('{config}')"

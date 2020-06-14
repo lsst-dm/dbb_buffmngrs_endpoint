@@ -33,11 +33,11 @@ def start(filename, validate):
         try:
             jsonschema.validate(instance=configuration, schema=schema)
         except jsonschema.ValidationError as ex:
-            msg = f"Configuration error: {ex.message}."
+            msg = f"configuration error: {ex.message}."
             logger.error(msg)
             raise ValueError(msg)
         except jsonschema.SchemaError as ex:
-            msg = f"Schema error: {ex.message}."
+            msg = f"schema error: {ex.message}."
             logger.error(msg)
             raise ValueError(msg)
 
@@ -86,6 +86,6 @@ def start(filename, validate):
                 raise RuntimeError(msg)
             config[type_] = action
 
-    logger.info("starting finder...")
+    logger.info("starting Finder...")
     finder = Finder(config)
     finder.run()

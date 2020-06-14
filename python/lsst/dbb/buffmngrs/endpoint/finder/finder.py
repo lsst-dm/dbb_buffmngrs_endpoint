@@ -43,9 +43,8 @@ class Finder(object):
         missing = required - set(config)
         if missing:
             msg = f"invalid configuration: {', '.join(missing)} not provided"
-            logger.critical(msg)
+            logger.error(msg)
             raise ValueError(msg)
-
         self.session = config["session"]
 
         method = config.get("search_method", "scan")
@@ -53,7 +52,7 @@ class Finder(object):
             self.search = getattr(sys.modules[__name__], method)
         except AttributeError as ex:
             msg = f"unknown search method: '{method}'"
-            logger.critical(msg)
+            logger.error(msg)
             raise ValueError(msg)
 
         self.buffer = os.path.abspath(config["buffer"])
@@ -61,7 +60,7 @@ class Finder(object):
         for path in (self.buffer, self.storage):
             if not os.path.isdir(path):
                 msg = f"directory '{path}' not found"
-                logger.critical(msg)
+                logger.error(msg)
                 raise ValueError()
 
         noop = Null(dict())
@@ -76,10 +75,10 @@ class Finder(object):
     def run(self):
         while True:
             for path in self.search(self.buffer):
+                logger.debug(f"starting processing a new file: '{path}'")
                 action_type = "std"
 
-                # Check if the new file is not a duplicate of an already
-                # existing file.
+                logger.debug(f"checking if not already in storage area")
                 checksum = get_checksum(path)
                 try:
                     records = self.session.query(File).\
@@ -94,18 +93,19 @@ class Finder(object):
                                      f"removing from buffer")
                         action_type = "alt"
 
-                # Execute pre-defined action on the file.
                 action = self.dispatch[action_type]
+                logger.debug(f"executing action: {action}")
                 try:
                     action.execute(path)
                 except RuntimeError as ex:
                     logger.error(f"action failed: {ex}")
+                    logger.debug(f"terminating processing of '{path}'")
                     continue
 
                 if action_type == "alt":
                     continue
 
-                # Insert data about file into the database.
+                logger.debug(f"updating database entries: {action}")
                 ts = datetime.datetime.now()
                 entry = File(url=action.path,
                              checksum=checksum,
@@ -120,6 +120,9 @@ class Finder(object):
                         self.session.commit()
                     except SQLAlchemyError as ex:
                         logger.error(f"cannot commit changes: {ex}")
+                logger.debug(f"processing of '{path}' completed")
+
+            logger.debug(f"no new files, next check in {self.pause} sec.")
             time.sleep(self.pause)
 
 
