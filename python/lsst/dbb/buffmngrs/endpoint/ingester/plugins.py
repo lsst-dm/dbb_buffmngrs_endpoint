@@ -97,8 +97,29 @@ class Gen2Ingest(object):
         ----------
         filename : `str`
             Path to the file.
+
+        Raises
+        ------
+        RuntimeError
+            If any problems where encountered during execution of the LSST
+            task.
         """
-        self.task.ingestFiles(filename)
+        try:
+            self.task.ingestFiles(filename)
+        except Exception as ex:
+            # Find the root cause of a exception chain.
+            #
+            # Note
+            # ----
+            # A feeble attempt to address Gen2 Butler's idiosyncrasy when
+            # the most meaningful error message while trying to ingest
+            # image which is already in the repository can be find at the
+            # very bottom of the stack trace.  If other Gen2 Butler errors
+            # doesn't follow this pattern, well, we are all doomed to grep
+            # the log files.
+            while ex.__cause__:
+                ex = ex.__cause__
+            raise RuntimeError(ex)
 
 
 class Gen3Ingest(object):
@@ -157,5 +178,14 @@ class Gen3Ingest(object):
         ----------
         filename : `str`
             Path to the file.
+
+        Raises
+        ------
+        RuntimeError
+            If any problems where encountered during execution of the LSST
+            task.
         """
-        self.task.run([filename])  # run() requires a list as an argument
+        try:
+            self.task.run([filename])  # run() requires a list as an argument
+        except Exception as ex:
+            raise RuntimeError(ex)
