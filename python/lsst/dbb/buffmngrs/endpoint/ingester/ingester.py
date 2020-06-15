@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import datetime
 import logging
+import os
 import queue
 import threading
 import time
@@ -34,10 +35,12 @@ from ..declaratives import attempt_creator, file_creator, status_creator
 __all__ = ["Ingester"]
 
 
-Result = namedtuple('Result', ['filename', 'timestamp', 'duration', 'message'])
-
-
 logger = logging.getLogger(__name__)
+
+
+field_names = ['filename', 'timestamp', 'duration', 'message', 'version']
+Result = namedtuple('Result', field_names)
+
 status = {
     "untried": "UNTRIED",
     "awaits": "AWAITING",
@@ -144,6 +147,19 @@ class Ingester(object):
                 logger.error(f"cannot commit updates: {ex}")
             else:
                 for url in records:
+                    if not os.path.isfile(url):
+                        ts = datetime.datetime.now()
+                        msg = "no such file in the storage area"
+                        logger.warning(f"cannot process '{url}': " + msg)
+                        fields = {
+                            "filename": url,
+                            "timestamp": ts.isoformat(timespec="milliseconds"),
+                            "duration": 0,
+                            "message": msg,
+                            "version": "N/A"
+                        }
+                        err.put(Result(**fields))
+                        continue
                     inp.put(url)
 
             # Create a pool of workers to ingest the files. The pool will be
@@ -232,14 +248,14 @@ class Ingester(object):
         """
         attempts = {}
         while not channel.empty():
-            path, timestamp, duration, message = channel.get()
-            attempt = {
-                "task_ver": self.plugin.version(),
+            path, timestamp, duration, message, version = channel.get()
+            fields = {
+                "task_ver": version,
                 "made_at": timestamp,
                 "duration": duration,
                 "traceback": message,
             }
-            attempts[path] = self.Attempt(**attempt)
+            attempts[path] = self.Attempt(**fields)
         return attempts
 
 
@@ -280,7 +296,11 @@ def worker(inp, out, err, task=None):
             chn, msg = out, ""
         finally:
             dur = datetime.datetime.now() - start
-            chn.put(Result(filename,
-                           start.isoformat(timespec="milliseconds"),
-                           dur / datetime.timedelta(milliseconds=1),
-                           msg))
+            fields = {
+                "filename": filename,
+                "timestamp": start.isoformat(timespec="milliseconds"),
+                "duration": dur / datetime.timedelta(milliseconds=1),
+                "message": msg,
+                "version": task.version()
+            }
+            chn.put(Result(**fields))
