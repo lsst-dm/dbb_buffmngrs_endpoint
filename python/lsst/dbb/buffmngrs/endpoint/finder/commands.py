@@ -80,7 +80,7 @@ def start(filename, validate):
         else:
             action_config = {}
             if name == "Move":
-                action_config["src"] = config["buffer"]
+                action_config["src"] = config["source"]
                 action_config["dst"] = config["storage"]
             try:
                 action = class_(action_config)

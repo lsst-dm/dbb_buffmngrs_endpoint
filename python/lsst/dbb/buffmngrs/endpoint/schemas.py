@@ -47,30 +47,53 @@ properties:
     finder:
         type: object
         properties:
-            buffer:
+            source:
                 type: string
             storage:
                 type: string
-            blacklist:
-                anyOf:
-                    - type: array
-                      items:
-                          types: string
-                    - type: "null"
             actions:
                 type: object
                 properties:
                     standard:
                         type: string
+                        enum:
+                            - Delete
+                            - Move
+                            - Noop
                     alternative:
                         type: string
-            search_method:
-                type: string
+                        enum:
+                            - Delete
+                            - Move
+                            - Noop
+            search:
+                type: object
+                properties:
+                    method:
+                        type: string
+                        enum:
+                            - scan
+                            - parse
+                    blacklist:
+                        anyOf:
+                            - type: array
+                              items:
+                                  types: string
+                            - type: "null"
+                    date:
+                        type: string
+                    timespan:
+                        type: integer
+                        minimum: 0
+                required:
+                    - method
             pause:
                 type: integer
                 minimum: 0
         required:
-            - buffer
+            - actions
+            - search
+            - source
             - storage
 required:
     - database

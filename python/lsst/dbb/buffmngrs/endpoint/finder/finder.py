@@ -55,17 +55,10 @@ class Finder(object):
             raise ValueError(msg)
         self.File = file_creator(config["orms"])
 
-        method = config.get("search_method", "scan")
-        try:
-            self.search = getattr(sys.modules[__name__], method)
-        except AttributeError as ex:
-            msg = f"unknown search method: '{method}'"
-            logger.error(msg)
-            raise ValueError(msg)
-
-        self.buffer = os.path.abspath(config["buffer"])
+        # Check if provided source and storage location exists.
+        self.source = os.path.abspath(config["source"])
         self.storage = os.path.abspath(config["storage"])
-        for path in (self.buffer, self.storage):
+        for path in (self.source, self.storage):
             if not os.path.isdir(path):
                 msg = f"directory '{path}' not found"
                 logger.error(msg)
@@ -77,17 +70,33 @@ class Finder(object):
             "alt": config.get("alternative", noop)
         }
 
-        self.blacklist = config.get("blacklist", [])
+        # Configure method responsible for file discovery.
+        search = config["search"]
+        method = search["method"]
+        try:
+            self.search = getattr(sys.modules[__name__], method)
+        except AttributeError as ex:
+            msg = f"unknown search method: '{method}'"
+            logger.error(msg)
+            raise ValueError(msg)
+        self.search_opts = dict(blacklist=search.get("blacklist", None),
+                                date=search.get("date", None),
+                                timespan=search.get("timespan", 1))
+        self.root = self.source if method is "scan" else self.source
+
+        # Initialize various optional settings.
         self.pause = config.get("pause", 1)
 
     def run(self):
         while True:
-            for path in self.search(self.buffer):
-                logger.debug(f"starting processing a new file: '{path}'")
+            for relpath in self.search(self.source, **self.search_opts):
+                abspath = os.path.abspath(os.path.join(self.source, relpath))
+
+                logger.debug(f"starting processing a new file: '{relpath}'")
                 action_type = "std"
 
                 logger.debug(f"checking if not already in storage area")
-                checksum = get_checksum(path)
+                checksum = get_checksum(abspath)
                 try:
                     records = self.session.query(self.File).\
                         filter(self.File.checksum == checksum).all()
@@ -96,18 +105,18 @@ class Finder(object):
                 else:
                     if len(records) != 0:
                         dups = ", ".join(str(rec.id) for rec in records)
-                        logger.error(f"file '{path}' already in the storage "
-                                     f"area (see row(s): {dups}), "
-                                     f"removing from buffer")
+                        logger.error(f"file '{relpath}' already in the "
+                                     f"storage area '{self.storage}: "
+                                     f"(see row(: {dups}), removing")
                         action_type = "alt"
 
                 action = self.dispatch[action_type]
                 logger.debug(f"executing action: {action}")
                 try:
-                    action.execute(path)
+                    action.execute(abspath)
                 except RuntimeError as ex:
                     logger.error(f"action failed: {ex}")
-                    logger.debug(f"terminating processing of '{path}'")
+                    logger.debug(f"terminating processing of '{relpath}'")
                     continue
 
                 if action_type == "alt":
@@ -130,7 +139,7 @@ class Finder(object):
                         self.session.commit()
                     except SQLAlchemyError as ex:
                         logger.error(f"cannot commit changes: {ex}")
-                logger.debug(f"processing of '{path}' completed")
+                logger.debug(f"processing of '{relpath}' completed")
 
             logger.debug(f"no new files, next check in {self.pause} sec.")
             time.sleep(self.pause)
@@ -171,7 +180,7 @@ def get_checksum(path, method='blake2', block_size=4096):
     return hasher.hexdigest()
 
 
-def scan(directory, blacklist=None):
+def scan(directory, blacklist=None, **kwargs):
     """Generate the file names in a directory tree.
 
     Generates the file paths in a given directory tree excluding those files
@@ -189,13 +198,13 @@ def scan(directory, blacklist=None):
     Returns
     -------
     generator object
-        An iterator over file paths.
+        An iterator over file paths relative to the ``directory``.
     """
     if blacklist is None:
         blacklist = []
     for dirpath, dirnames, filenames in os.walk(directory):
         for fn in filenames:
-            path = os.path.abspath(os.path.join(dirpath, fn))
+            path = os.path.relpath(os.path.join(dirpath, fn), start=directory)
             if any(re.search(patt, path) for patt in blacklist):
                 continue
             yield path

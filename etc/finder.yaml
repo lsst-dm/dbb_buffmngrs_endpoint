@@ -2,15 +2,19 @@ database:
   engine: "postgres://tester:password@localhost:5432/test"
   orms:
     file: files
+    event: gen2_files_events
 #  echo: false
 finder:
-  buffer: /data/buffer
+  source: /data/buffer
   storage: /data/storage
-#  blacklist: null
   actions:
     standard: Move
     alternative: Delete
-#  search_method: scan
+  search:
+    method: scan
+#    blacklist: null
+#    date: null
+#    timespan: 1
 #  pause: 1
 #logging:
 #  file: null
