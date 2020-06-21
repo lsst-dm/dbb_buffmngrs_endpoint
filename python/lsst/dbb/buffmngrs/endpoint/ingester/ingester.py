@@ -28,8 +28,10 @@ import traceback
 from collections import namedtuple
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import exists
+from sqlalchemy.sql.expression import func
 from .plugins import NullIngest
-from ..declaratives import attempt_creator, file_creator, status_creator
+from ..declaratives import event_creator, file_creator
+from ..status import Status
 
 
 __all__ = ["Ingester"]
@@ -38,16 +40,8 @@ __all__ = ["Ingester"]
 logger = logging.getLogger(__name__)
 
 
-field_names = ['filename', 'timestamp', 'duration', 'message', 'version']
+field_names = ['realpath', 'timestamp', 'duration', 'message', 'version']
 Result = namedtuple('Result', field_names)
-
-status = {
-    "untried": "UNTRIED",
-    "awaits": "AWAITING",
-    "success": "SUCCESS",
-    "failure": "FAILURE",
-    "unknown": "INTERRUPTED",
-}
 
 
 class Ingester(object):
@@ -82,6 +76,7 @@ class Ingester(object):
             raise ValueError(msg)
         self.plugin = config["plugin"]
         self.session = config["session"]
+        self.storage = config["storage"]
 
         required = {"attempt", "file", "status"}
         missing = required - set(config["orms"])
@@ -89,16 +84,15 @@ class Ingester(object):
             msg = f"invalid ORMs: {', '.join(missing)} not provided"
             logger.error(msg)
             raise ValueError(msg)
+        self.Event = event_creator(config["orms"])
         self.File = file_creator(config["orms"])
-        self.Attempt = attempt_creator(config["orms"])
-        self.Status = status_creator(config["orms"])
 
         self.batch_size = config.get("batch_size", 10)
         self.daemon = config.get("daemon", True)
         self.pause = config.get("pause", 1)
         self.pool_size = config.get("pool_size", 1)
-        self.status = config.get("file_status", status["untried"])
-        if self.status == status["success"]:
+        self.status = config.get("file_status", Status.UNTRIED.value)
+        if self.status == Status.SUCCESS.value:
             msg = f"invalid status: {self.status}"
             logger.error(msg)
             raise ValueError(msg)
@@ -115,20 +109,11 @@ class Ingester(object):
         while True:
 
             # When in normal mode of operation, check for new files.
-            if self.status == status["untried"]:
+            if self.status == Status.UNTRIED.value:
                 self._fetch()
 
             # Grab a bunch of files which need to be (re)ingested.
-            try:
-                query = self.session.query(self.Status).\
-                    filter(self.Status.status == self.status).\
-                    limit(self.batch_size)
-            except SQLAlchemyError as ex:
-                logger.error(f"failed to retrieve files for processing: {ex}")
-                time.sleep(self.pause)
-                continue
-            else:
-                records = {rec.url: rec for rec in query}
+            records = self._grab()
             if not records:
                 msg = f"no files with status '{self.status}' to process, "
                 if not self.daemon:
@@ -139,21 +124,24 @@ class Ingester(object):
                 continue
 
             # Update statuses of the files and enqueue them for ingesting.
-            for rec in records.values():
-                rec.status = status["awaits"]
+            for id_ in records.values():
+                event = self.Event(status=Status.PENDING.value,
+                                   start_time=datetime.datetime.now(),
+                                   files_id=id_)
+                self.session.add(event)
             try:
                 self.session.commit()
             except SQLAlchemyError as ex:
                 logger.error(f"cannot commit updates: {ex}")
             else:
-                for url in records:
+                for id_, path in records:
                     if not os.path.isfile(url):
                         ts = datetime.datetime.now()
                         msg = "no such file in the storage area"
                         logger.warning(f"cannot process '{url}': " + msg)
                         fields = {
-                            "filename": url,
-                            "timestamp": ts.isoformat(timespec="milliseconds"),
+                            "realpath": path,
+                            "timestamp": ts,
                             "duration": 0,
                             "message": msg,
                             "version": "N/A"
@@ -183,28 +171,31 @@ class Ingester(object):
 
             # Update statuses of the files for which ingest attempt was made
             # and succeeded.
-            attempts = self._process(out)
-            for url, att in attempts.items():
-                records[url].status = status["success"]
-                records[url].attempts.append(att)
-            processed.update(attempts)
+            events = self._process(out)
+            for url, evt in events.items():
+                evt.status = Status.SUCCESS.value
+                evt.files_id = records[url].id
+                records[url].events.append(evt)
+            processed.update(events)
 
             # Update statuses of the files for which ingest attempt was made
             # but failed.
-            attempts = self._process(err)
-            for url, att in attempts.items():
-                records[url].status = status["failure"]
-                records[url].attempts.append(att)
-            processed.update(attempts)
+            events = self._process(err)
+            for url, evt in events.items():
+                evt.status = Status.FAILURE.value
+                evt.files_id = records[url]
+                records[url].events.append(evt)
+            processed.update(events)
 
             # Update statuses of the files for which the ingest attempt failed
             # for other reasons, e.g. a worker was killed by an external
             # process.
             unfinished = set(records) - processed
             for url in unfinished:
-                records[url].status = status["unknown"]
+                records[url].status = Status.UNKNOWN
 
             # Commit all changes to the database.
+            self.session.add_all(processed)
             try:
                 self.session.commit()
             except SQLAlchemyError as ex:
@@ -218,19 +209,59 @@ class Ingester(object):
         Queries the database for newly discovered files and enqueues them for
         processing.
         """
+        # Find new files that is files for which there is no recorded events:
+        #
+        #     SELECT *
+        #     FROM <file table> AS f
+        #     WHERE NOT EXISTS
+        #         (SELECT *
+        #         FROM <event table> AS e
+        #         WHERE e.files_id = f.id);
         try:
-            query = self.session.query(self.File.url). \
-                filter(~exists().where(self.File.url == self.Status.url))
-        except SQLAlchemyError as ex:
+            query = self.session.query(self.File.id).\
+                filter(~self.File.events.any())
+        except Exception as ex:
             logger.error(f"failed to check for new files: {ex}")
         else:
-            for url in query:
-                rec = self.Status(url=url, status=status["untried"])
+            for id_ in query:
+                rec = self.Event(status=Status.UNTRIED.value,
+                                 start_time=datetime.datetime.now(),
+                                 files_id=id_)
                 self.session.add(rec)
             try:
                 self.session.commit()
             except SQLAlchemyError as ex:
                 logger.error(f"failed to add new files: {ex}")
+
+    def _grab(self):
+        """Select a group of files for ingestion.
+
+        Returns
+        -------
+        `dict`
+            Files' absolute paths mapped to their database ids.
+        """
+        # Find files for which the most recent event has a requested status.
+        #
+        #     SELECT f.id, f.relpath, f.filename
+        #     FROM <file table> AS f INNER JOIN
+        #         (SELECT files_id, status, MAX(start_time)
+        #         FROM <event table>
+        #         GROUP BY (files_id, status)) AS e
+        #     ON f.id = e.files_id AND e.status = '<status>'
+        records = {}
+        try:
+            query = self.session.query(self.File).select_from(self.Event). \
+                join(self.Event.files_id). \
+                filter(self.File.id == self.Event.files_id). \
+                filter(self.Event.status == self.status). \
+                limit(self.batch_size)
+        except Exception as ex:
+            logger.error(f"failed to retrieve files for processing: {ex}")
+        else:
+            records = {os.path.join(self.storage, r.relpath, r.filename): r.id
+                       for r in query}
+        return records
 
     def _process(self, channel):
         """Process results of ingest attempts from a given channel.
@@ -246,17 +277,17 @@ class Ingester(object):
         `dict`
             File names coupled with the results of their ingest attempt.
         """
-        attempts = {}
+        events = {}
         while not channel.empty():
-            path, timestamp, duration, message, version = channel.get()
+            realpath, timestamp, duration, message, version = channel.get()
             fields = {
-                "task_ver": version,
-                "made_at": timestamp,
+                "ingest_ver": version,
+                "start_time": timestamp,
                 "duration": duration,
-                "traceback": message,
+                "err_message": message,
             }
-            attempts[path] = self.Attempt(**fields)
-        return attempts
+            events[realpath] = self.Event(**fields)
+        return events
 
 
 def worker(inp, out, err, task=None):
@@ -295,11 +326,11 @@ def worker(inp, out, err, task=None):
         else:
             chn, msg = out, ""
         finally:
-            dur = datetime.datetime.now() - start
+            duration = datetime.datetime.now() - start
             fields = {
                 "filename": filename,
-                "timestamp": start.isoformat(timespec="milliseconds"),
-                "duration": dur / datetime.timedelta(milliseconds=1),
+                "timestamp": start,
+                "duration": duration,
                 "message": msg,
                 "version": task.version()
             }

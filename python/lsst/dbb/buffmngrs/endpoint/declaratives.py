@@ -18,12 +18,23 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-from sqlalchemy import Column, ForeignKey, Integer, String, Text
+from datetime import datetime
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Interval,
+    String,
+    Text)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+from .status import Status
 
 
-__all__ = ["attempt_creator", "file_creator", "status_creator"]
+__all__ = ["event_creator", "file_creator"]
 
 
 Base = declarative_base()
@@ -34,38 +45,17 @@ def file_creator(orms):
     """
     attributes = {
         "__tablename__": orms["file"],
-        "id": Column(Integer, primary_key=True),
-        "url": Column(String),
-        "checksum": Column(String),
-        "added_at": Column(String),
+        "id": Column(BigInteger, primary_key=True),
+        "relpath": Column(String, nullable=False),
+        "filename": Column(String, nullable=False, unique=True),
+        "checksum": Column(String, nullable=False, unique=True),
+        "added_on": Column(DateTime, nullable=False, default=datetime.now),
+        "events": relationship("Event")
     }
     return type("File", (Base,), attributes)
 
 
-def status_creator(orms):
-    """Create a declarative for database ingest statuses.
-
-    Parameters
-    ----------
-    orms : `dict`
-        A mapping between roles and database table names.
-
-    Returns
-    -------
-    `sqlalchemy.ext.declarative.api.DeclarativeMeta`
-        A declarative (class), a Pythonic representation of database table.
-    """
-    attributes = {
-        "__tablename__": orms["status"],
-        "id": Column(Integer, primary_key=True),
-        "url": Column(String),
-        "status": Column(String),
-        "attempts": relationship("Attempt"),
-    }
-    return type("Status", (Base,), attributes)
-
-
-def attempt_creator(orms):
+def event_creator(orms):
     """Create a declarative for database ingest attempts.
 
     Parameters
@@ -79,12 +69,13 @@ def attempt_creator(orms):
         A declarative (class), a Pythonic representation of database table.
     """
     attributes = {
-        "__tablename__": orms["attempt"],
-        "id": Column(Integer, primary_key=True),
-        "task_ver": Column(String),
-        "made_at": Column(String),
-        "duration": Column(Integer),
-        "traceback": Column(Text),
-        "status_id": Column(Integer, ForeignKey(f"{orms['status']}.id")),
+        "__tablename__": orms["event"],
+        "ingest_ver": Column(String),
+        "start_time": Column(DateTime, primary_key=True),
+        "duration": Column(Interval),
+        "err_message": Column(Text),
+        "status": Column(Enum(Status)),
+        "files_id": Column(Integer, ForeignKey(f"{orms['file']}.id"),
+                           primary_key=True),
     }
-    return type("Attempt", (Base,), attributes)
+    return type("Event", (Base,), attributes)

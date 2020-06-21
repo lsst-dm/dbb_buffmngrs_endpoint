@@ -2,8 +2,7 @@ database:
   engine: "postgres://tester:password@localhost:5432/test"
   orms:
     file: files
-    status: gen2_statuses
-    attempt: gen2_attempts
+    event: gen2_file_events
 #  echo: false
 ingester:
   plugin:

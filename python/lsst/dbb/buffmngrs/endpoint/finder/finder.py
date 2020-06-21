@@ -26,8 +26,7 @@ import re
 import sys
 import time
 from sqlalchemy.exc import SQLAlchemyError
-from .actions import Null
-from ..declaratives import file_creator
+from ..declaratives import event_creator, file_creator
 
 
 __all__ = ["Finder"]
@@ -47,12 +46,15 @@ class Finder(object):
             raise ValueError(msg)
         self.session = config["session"]
 
-        required = {"file"}
+        # Create necessary object-relational mappings. We are doing it
+        # dynamically as RDBMS tables to use are determined at runtime.
+        required = {"event", "file"}
         missing = required - set(config["orms"])
         if missing:
             msg = f"invalid ORMs: {', '.join(missing)} not provided"
             logger.error(msg)
             raise ValueError(msg)
+        self.Event = event_creator(config["orms"])
         self.File = file_creator(config["orms"])
 
         # Check if provided source and storage location exists.
@@ -123,11 +125,11 @@ class Finder(object):
                     continue
 
                 logger.debug(f"updating database entries: {action}")
-                ts = datetime.datetime.now()
+                dirname, basename = os.path.split(action.path)
                 entry = self.File(
-                    url=action.path,
+                    relpath=os.path.relpath(dirname, start=self.storage),
+                    filename=basename,
                     checksum=checksum,
-                    added_at=ts.isoformat(timespec="milliseconds")
                 )
                 try:
                     self.session.add(entry)
