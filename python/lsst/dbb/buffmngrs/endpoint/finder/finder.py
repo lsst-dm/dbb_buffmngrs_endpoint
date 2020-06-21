@@ -38,12 +38,15 @@ logger = logging.getLogger(__name__)
 class Finder(object):
 
     def __init__(self, config):
-        required = {"buffer", "storage", "session"}
+        # Check if configuration is valid, i.e., all required settings are
+        # provided; complain if not.
+        required = {"orms", "search", "session", "source", "storage"}
         missing = required - set(config)
         if missing:
             msg = f"invalid configuration: {', '.join(missing)} not provided"
             logger.error(msg)
             raise ValueError(msg)
+
         self.session = config["session"]
 
         # Create necessary object-relational mappings. We are doing it
@@ -66,11 +69,8 @@ class Finder(object):
                 logger.error(msg)
                 raise ValueError()
 
-        noop = Null(dict())
-        self.dispatch = {
-            "std": config.get("standard", noop),
-            "alt": config.get("alternative", noop)
-        }
+        # Set standard and alternative actions based on provided configuration.
+        self.dispatch = dict(std=config["standard"], alt=config["alternative"])
 
         # Configure method responsible for file discovery.
         search = config["search"]

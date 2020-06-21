@@ -120,8 +120,7 @@ properties:
                         type: string
                 required:
                     - file
-                    - status
-                    - attempt
+                    - event
             echo:
                 type: boolean
         required:

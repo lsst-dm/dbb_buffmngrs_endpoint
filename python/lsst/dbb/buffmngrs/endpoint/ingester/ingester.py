@@ -68,7 +68,7 @@ class Ingester(object):
     """
 
     def __init__(self, config):
-        required = {"plugin", "orms", "session"}
+        required = {"plugin", "orms", "session", "storage"}
         missing = required - set(config)
         if missing:
             msg = f"invalid configuration: {', '.join(missing)} not provided"
@@ -78,7 +78,7 @@ class Ingester(object):
         self.session = config["session"]
         self.storage = config["storage"]
 
-        required = {"attempt", "file", "status"}
+        required = {"event", "file"}
         missing = required - set(config["orms"])
         if missing:
             msg = f"invalid ORMs: {', '.join(missing)} not provided"
