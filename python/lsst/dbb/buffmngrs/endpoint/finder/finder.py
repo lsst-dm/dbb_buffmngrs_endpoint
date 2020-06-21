@@ -201,37 +201,71 @@ def scan(directory, blacklist=None):
             yield path
 
 
-def parse(directory, blacklist=None):
-    """Generate the file names in a directory tree.
+def parse(directory, blacklist=None, isodate=None, timespan=1):
+    """Generate the file names based on the content of the rsync logs.
 
-    Generate the file paths in a given directory tree excluding those files
-    that were blacklisted.
+    This is a specialized search method for finding files which where
+    transferred to the storage area by ``rsync``. It identifies these
+    files by parsing log files created by it.
+
+    It assumes that:
+
+    1. The logs are stored in a centralized location.
+    2. Logs from different days are kept in different subdirectories in that
+       location.
+    3. The name of each subdirectory represents the date when
+       files where transferred and that date is expressed as ``YYYYMMDD``.
+    4. Log files contain file paths relative to the root of the storage area.
+
+    After the function completed parsing a given logfile, it creates an
+    empty file ``<logfile>.done`` which act as a guard preventing it from
+    parsing it again.
 
     Parameters
     ----------
     directory : `str`
-        The root of the directory tree which need to be searched.
+        The directory where the all log files reside.
     blacklist : `list` of `str`, optional
         List of regular expressions file names should be match against. If a
         filename matches any of the patterns in the list, file will be ignored.
         By default, no file is ignored.
+    isodate : `str`
+        A date in ISO format corresponding the directory which the function
+        should monitor for new logs. If None (default), it will be set to
+        the current date.
+    timespan : `int`
+        The number of previous days to add to the list of monitored
+        directories. Defaults to 1 which means that the function will
+        monitor log files in a subdirectory corresponding to whatever day
+        the``isodate`` was set to and the day before (if it exists).
 
     Returns
     -------
     generator object
-        An iterator over file paths.
+        An iterator over file paths extracted from the log files.
     """
     if blacklist is None:
         blacklist = []
-    for dirpath, dirnames, filenames in os.walk(directory):
-        manifests = [os.path.join(dirpath, f)
-                     for f in filenames if re.match("^rsync*log$", f)]
-        for manifest in manifests:
-            with open(manifest) as f:
-                for line in f:
-                    if not re.match("<f+++++++++", line):
-                        continue
-                    op, chng, fn, *rest = line.strip().split()
-                    if any(re.match(patt, fn) for patt in blacklist):
-                        continue
-                    yield fn
+    end = datetime.date.today()
+    if isodate is not None:
+        end = datetime.date.fromisoformat(isodate)
+    dates = [end - datetime.timedelta(days=n) for n in range(timespan+1)]
+    for date in dates:
+        top = os.path.join(directory, date.isoformat().replace("-", ""))
+        if not os.path.exists(top):
+            continue
+        for dirpath, dirnames, filenames in os.walk(top):
+            manifests = [os.path.join(dirpath, fn) for fn in filenames
+                         if re.match(r"^rsync.*log$", fn)]
+            for manifest in manifests:
+                if os.path.exists(manifest + ".done"):
+                    continue
+                with open(manifest) as f:
+                    for line in f:
+                        if "<f+++++++++" not in line:
+                            continue
+                        op, chng, loc, *rest = line.strip().split()
+                        if any(re.match(patt, loc) for patt in blacklist):
+                            continue
+                        yield loc
+                os.mknod(manifest + ".done")
