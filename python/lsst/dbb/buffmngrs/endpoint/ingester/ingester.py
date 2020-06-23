@@ -63,7 +63,7 @@ class Ingester(object):
     Raises
     ------
     ValueError
-        If required setting is missing or any
+        If required setting is missing.
     """
 
     def __init__(self, config):
@@ -293,7 +293,8 @@ class Ingester(object):
         Returns
         -------
         `dict`
-            File names coupled with the results of their ingest attempt.
+            Files' absolute paths mapped to the results of their ingest
+            attempt.
         """
         events = {}
         while not channel.empty():

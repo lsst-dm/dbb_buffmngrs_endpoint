@@ -36,6 +36,30 @@ logger = logging.getLogger(__name__)
 
 
 class Finder(object):
+    """Framework responsible for file discovery.
+
+    Finder constantly monitors a designated source location for new files.
+    Currently it provides two methods of finding new files:
+
+    **scan**
+        Finds file names in a given directory tree by walking it top-down.
+        Appropriate to monitor an actual buffer -- a directory where
+        files are being written to.
+
+    **parse**
+        Finds file names by parsing rsync log files in a given directory.
+        Appropriate to monitor file transfers done by rsync.
+
+    Parameters
+    ----------
+    config : `dict`
+        Finder configuration.
+
+    Raises
+    ------
+    ValueError
+        If a required setting is missing.
+    """
 
     def __init__(self, config):
         # Check if configuration is valid, i.e., all required settings are
@@ -93,6 +117,8 @@ class Finder(object):
         self.pause = config.get("pause", 1)
 
     def run(self):
+        """Start the framework.
+        """
         while True:
             for relpath in self.search(self.source, **self.search_opts):
                 abspath = os.path.abspath(os.path.join(self.location, relpath))
