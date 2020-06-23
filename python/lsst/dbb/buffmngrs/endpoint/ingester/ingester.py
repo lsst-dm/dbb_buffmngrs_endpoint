@@ -27,7 +27,6 @@ import time
 import traceback
 from collections import namedtuple
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.sql import exists
 from sqlalchemy.sql.expression import func
 from .plugins import NullIngest
 from ..declaratives import event_creator, file_creator
@@ -124,21 +123,21 @@ class Ingester(object):
                 continue
 
             # Update statuses of the files and enqueue them for ingesting.
-            for id_ in records.values():
-                event = self.Event(status=Status.PENDING.value,
+            for rec in records.values():
+                event = self.Event(status=Status.PENDING,
                                    start_time=datetime.datetime.now(),
-                                   files_id=id_)
+                                   files_id=rec.id)
                 self.session.add(event)
             try:
                 self.session.commit()
             except SQLAlchemyError as ex:
                 logger.error(f"cannot commit updates: {ex}")
             else:
-                for id_, path in records:
-                    if not os.path.isfile(url):
+                for path, rec in records.items():
+                    if not os.path.isfile(path):
                         ts = datetime.datetime.now()
                         msg = "no such file in the storage area"
-                        logger.warning(f"cannot process '{url}': " + msg)
+                        logger.warning(f"cannot process '{path}': " + msg)
                         fields = {
                             "realpath": path,
                             "timestamp": ts,
@@ -148,7 +147,7 @@ class Ingester(object):
                         }
                         err.put(Result(**fields))
                         continue
-                    inp.put(url)
+                    inp.put(path)
 
             # Create a pool of workers to ingest the files. The pool will be
             # freed once processing is completed.
@@ -167,35 +166,43 @@ class Ingester(object):
             del pool[:]
 
             # Process the results of the ingest attempts.
-            processed = set()
+            processed = {}
 
             # Update statuses of the files for which ingest attempt was made
             # and succeeded.
             events = self._process(out)
-            for url, evt in events.items():
-                evt.status = Status.SUCCESS.value
-                evt.files_id = records[url].id
-                records[url].events.append(evt)
+            for url in events:
+                rec, evt = records[url], events[url]
+                evt.status = Status.SUCCESS
+                evt.files_id = rec.id
+                rec.events.append(evt)
             processed.update(events)
 
             # Update statuses of the files for which ingest attempt was made
             # but failed.
             events = self._process(err)
-            for url, evt in events.items():
-                evt.status = Status.FAILURE.value
-                evt.files_id = records[url]
-                records[url].events.append(evt)
+            for url in events:
+                rec, evt = records[url], events[url]
+                evt.status = Status.FAILURE
+                evt.files_id = rec.id
+                rec.events.append(evt)
             processed.update(events)
 
             # Update statuses of the files for which the ingest attempt failed
             # for other reasons, e.g. a worker was killed by an external
             # process.
-            unfinished = set(records) - processed
-            for url in unfinished:
-                records[url].status = Status.UNKNOWN
+            events = {}
+            for url in set(records) - set(processed):
+                rec = records[url]
+                evt = self.Event(status=Status.UNKNOWN,
+                                 start_time=datetime.datetime.now(),
+                                 files_id=rec.id)
+                events[url] = evt
+                rec.events.append(evt)
+            processed.update(events)
 
             # Commit all changes to the database.
-            self.session.add_all(processed)
+            self.session.add_all(processed.values())
             try:
                 self.session.commit()
             except SQLAlchemyError as ex:
@@ -239,27 +246,38 @@ class Ingester(object):
         Returns
         -------
         `dict`
-            Files' absolute paths mapped to their database ids.
+            Files' absolute paths mapped to their database records.
         """
         # Find files for which the most recent event has a requested status.
         #
-        #     SELECT f.id, f.relpath, f.filename
-        #     FROM <file table> AS f INNER JOIN
-        #         (SELECT files_id, status, MAX(start_time)
-        #         FROM <event table>
-        #         GROUP BY (files_id, status)) AS e
-        #     ON f.id = e.files_id AND e.status = '<status>'
+        #     SELECT r.*
+        #     FROM <files> AS r
+        #     INNER JOIN (SELECT s.files_id, s.status
+        #                 FROM <events> AS s
+        #                 INNER JOIN (SELECT files_id, MAX(start_time) AS last
+        #                             FROM <events>
+        #                             GROUP BY files_is) AS t
+        #                 ON s.files_id = t.files_id
+        #                 WHERE s.start_time = t.last AND s.status = '<>') AS u
+        #     ON r.id = u.files_id;
         records = {}
         try:
-            query = self.session.query(self.File).select_from(self.Event). \
-                join(self.Event.files_id). \
-                filter(self.File.id == self.Event.files_id). \
-                filter(self.Event.status == self.status). \
-                limit(self.batch_size)
+            stmt = self.session.query(self.Event.files_id,
+                                      func.max(self.Event.start_time).\
+                                      label("last")).\
+                group_by(self.Event.files_id).subquery()
+            recent = self.session.query(self.Event.files_id,
+                                        self.Event.status).\
+                join(stmt, stmt.c.files_id == self.Event.files_id).\
+                filter(stmt.c.last == self.Event.start_time).\
+                filter(self.Event.status == self.status).\
+                subquery()
+            query = self.session.query(self.File).\
+                join(recent, recent.c.files_id == self.File.id)
         except Exception as ex:
             logger.error(f"failed to retrieve files for processing: {ex}")
         else:
-            records = {os.path.join(self.storage, r.relpath, r.filename): r.id
+            records = {os.path.join(self.storage, r.relpath, r.filename): r
                        for r in query}
         return records
 
@@ -328,7 +346,7 @@ def worker(inp, out, err, task=None):
         finally:
             duration = datetime.datetime.now() - start
             fields = {
-                "filename": filename,
+                "realpath": filename,
                 "timestamp": start,
                 "duration": duration,
                 "message": msg,

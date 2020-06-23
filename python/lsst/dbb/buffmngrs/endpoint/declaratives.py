@@ -42,6 +42,16 @@ Base = declarative_base()
 
 def file_creator(orms):
     """Declarative for database file entries.
+
+    Parameters
+    ----------
+    orms : `dict`
+        Name of the table in the database.
+
+    Returns
+    -------
+    `sqlalchemy.ext.declarative.api.DeclarativeMeta`
+        A declarative (class), a Pythonic representation of database table.
     """
     attributes = {
         "__tablename__": orms["file"],
@@ -50,7 +60,7 @@ def file_creator(orms):
         "filename": Column(String, nullable=False, unique=True),
         "checksum": Column(String, nullable=False, unique=True),
         "added_on": Column(DateTime, nullable=False, default=datetime.now),
-        "events": relationship("Event")
+        "events": relationship("Event", backref="file")
     }
     return type("File", (Base,), attributes)
 
