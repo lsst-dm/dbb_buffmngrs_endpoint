@@ -77,7 +77,7 @@ class Finder(object):
         method = search["method"]
         try:
             self.search = getattr(sys.modules[__name__], method)
-        except AttributeError as ex:
+        except AttributeError:
             msg = f"unknown search method: '{method}'"
             logger.error(msg)
             raise ValueError(msg)
@@ -133,8 +133,8 @@ class Finder(object):
                 )
                 try:
                     self.session.add(entry)
-                except SQLAlchemyError as ex:
-                    logger.error(f"adding {action.path} failed: {ex}")
+                except Exception as ex:
+                    logger.error(f"inserting {action.path} failed: {ex}")
                     action.undo()
                 else:
                     try:
