@@ -84,7 +84,10 @@ class Finder(object):
         self.search_opts = dict(blacklist=search.get("blacklist", None),
                                 date=search.get("date", None),
                                 timespan=search.get("timespan", 1))
-        self.root = self.source if method is "scan" else self.source
+
+        # If we are monitoring rsync transfers, files are already in the
+        # storage area. Otherwise they are still in the buffer.
+        self.location = self.storage if method is "parse" else self.storage
 
         # Initialize various optional settings.
         self.pause = config.get("pause", 1)
@@ -92,25 +95,31 @@ class Finder(object):
     def run(self):
         while True:
             for relpath in self.search(self.source, **self.search_opts):
-                abspath = os.path.abspath(os.path.join(self.source, relpath))
+                abspath = os.path.abspath(os.path.join(self.location, relpath))
+                logger.debug(f"starting processing a new file: '{abspath}'")
 
-                logger.debug(f"starting processing a new file: '{relpath}'")
                 action_type = "std"
 
                 logger.debug(f"checking if not already in storage area")
-                checksum = get_checksum(abspath)
+                try:
+                    checksum = get_checksum(abspath)
+                except FileNotFoundError:
+                    logger.error(f"{abspath}: no such file")
+                    logger.debug(f"terminating processing of '{abspath}'")
+                    continue
                 try:
                     records = self.session.query(self.File).\
                         filter(self.File.checksum == checksum).all()
                 except SQLAlchemyError as ex:
                     logger.error(f"cannot check for duplicates: {ex}")
-                else:
-                    if len(records) != 0:
-                        dups = ", ".join(str(rec.id) for rec in records)
-                        logger.error(f"file '{relpath}' already in the "
-                                     f"storage area '{self.storage}: "
-                                     f"(see row(: {dups}), removing")
-                        action_type = "alt"
+                    logger.debug(f"terminating processing of '{abspath}'")
+                    continue
+                if len(records) != 0:
+                    dups = ", ".join(str(rec.id) for rec in records)
+                    logger.error(f"file '{abspath}' already in the "
+                                 f"storage area '{self.storage}: "
+                                 f"(see row(s): {dups}), removing")
+                    action_type = "alt"
 
                 action = self.dispatch[action_type]
                 logger.debug(f"executing action: {action}")
@@ -118,13 +127,13 @@ class Finder(object):
                     action.execute(abspath)
                 except RuntimeError as ex:
                     logger.error(f"action failed: {ex}")
-                    logger.debug(f"terminating processing of '{relpath}'")
+                    logger.debug(f"terminating processing of '{abspath}'")
                     continue
 
                 if action_type == "alt":
                     continue
 
-                logger.debug(f"updating database entries: {action}")
+                logger.debug(f"updating database entries")
                 dirname, basename = os.path.split(action.path)
                 entry = self.File(
                     relpath=os.path.relpath(dirname, start=self.storage),
@@ -133,15 +142,17 @@ class Finder(object):
                 )
                 try:
                     self.session.add(entry)
+                    self.session.commit()
                 except Exception as ex:
-                    logger.error(f"inserting {action.path} failed: {ex}")
-                    action.undo()
-                else:
+                    logger.error(f"creating a database entry for {relpath} "
+                                 f"failed: {ex}; rolling back the changes")
                     try:
-                        self.session.commit()
-                    except SQLAlchemyError as ex:
-                        logger.error(f"cannot commit changes: {ex}")
-                logger.debug(f"processing of '{relpath}' completed")
+                        action.undo()
+                    except RuntimeError as ex:
+                        logger.error(f"cannot undo action: {ex}")
+                    logger.debug(f"terminating processing of '{abspath}'")
+                else:
+                    logger.debug(f"processing of '{relpath}' completed")
 
             logger.debug(f"no new files, next check in {self.pause} sec.")
             time.sleep(self.pause)

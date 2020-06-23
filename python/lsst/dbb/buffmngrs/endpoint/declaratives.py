@@ -74,7 +74,8 @@ def event_creator(orms):
         "start_time": Column(DateTime, primary_key=True),
         "duration": Column(Interval),
         "err_message": Column(Text),
-        "status": Column(Enum(Status)),
+        "status": Column(Enum(Status,
+                              values_callable=lambda x: [e.value for e in x])),
         "files_id": Column(Integer, ForeignKey(f"{orms['file']}.id"),
                            primary_key=True),
     }
