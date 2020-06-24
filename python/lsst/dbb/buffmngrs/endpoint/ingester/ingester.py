@@ -218,7 +218,7 @@ class Ingester(object):
         """
         # Find new files that is files for which there is no recorded events:
         #
-        #     SELECT *
+        #     SELECT id
         #     FROM <file table> AS f
         #     WHERE NOT EXISTS
         #         (SELECT *
@@ -230,7 +230,7 @@ class Ingester(object):
         except Exception as ex:
             logger.error(f"failed to check for new files: {ex}")
         else:
-            for id_ in query:
+            for (id_,) in query:
                 rec = self.Event(status=Status.UNTRIED.value,
                                  start_time=datetime.datetime.now(),
                                  files_id=id_)
