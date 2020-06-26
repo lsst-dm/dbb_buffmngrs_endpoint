@@ -80,7 +80,7 @@ def start(filename, validate):
                            echo=config.get("echo", False),
                            poolclass=class_)
 
-    logger.info("checking if required table exists...")
+    logger.info("checking if required database table exists...")
     required = {table for table in config["tablenames"].values()}
     available = set(inspect(engine).get_table_names())
     missing = required - available
