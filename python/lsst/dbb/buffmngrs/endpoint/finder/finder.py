@@ -64,7 +64,7 @@ class Finder(object):
     def __init__(self, config):
         # Check if configuration is valid, i.e., all required settings are
         # provided; complain if not.
-        required = {"orms", "search", "session", "source", "storage"}
+        required = {"tablenames", "search", "session", "source", "storage"}
         missing = required - set(config)
         if missing:
             msg = f"invalid configuration: {', '.join(missing)} not provided"
@@ -76,12 +76,12 @@ class Finder(object):
         # Create necessary object-relational mappings. We are doing it
         # dynamically as RDBMS tables to use are determined at runtime.
         required = {"file"}
-        missing = required - set(config["orms"])
+        missing = required - set(config["tablenames"])
         if missing:
             msg = f"invalid ORMs: {', '.join(missing)} not provided"
             logger.error(msg)
             raise ValueError(msg)
-        self.File = file_creator(config["orms"])
+        self.File = file_creator(config["tablenames"])
 
         # Check if provided source and storage location exists.
         self.source = os.path.abspath(config["source"])
@@ -248,7 +248,7 @@ def scan(directory, blacklist=None, **kwargs):
             yield path
 
 
-def parse(directory, blacklist=None, isodate=None, timespan=1):
+def parse_rsync_logs(directory, blacklist=None, isodate=None, timespan=1):
     """Generate the file names based on the content of the rsync logs.
 
     This is a specialized search method for finding files which where

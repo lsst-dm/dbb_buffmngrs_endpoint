@@ -39,7 +39,7 @@ __all__ = ["Ingester"]
 logger = logging.getLogger(__name__)
 
 
-field_names = ['realpath', 'timestamp', 'duration', 'message', 'version']
+field_names = ['abspath', 'timestamp', 'duration', 'message', 'version']
 Result = namedtuple('Result', field_names)
 
 
@@ -67,7 +67,7 @@ class Ingester(object):
     """
 
     def __init__(self, config):
-        required = {"plugin", "orms", "session", "storage"}
+        required = {"plugin", "session", "storage", "tablenames"}
         missing = required - set(config)
         if missing:
             msg = f"invalid configuration: {', '.join(missing)} not provided"
@@ -78,18 +78,18 @@ class Ingester(object):
         self.storage = config["storage"]
 
         required = {"event", "file"}
-        missing = required - set(config["orms"])
+        missing = required - set(config["tablenames"])
         if missing:
             msg = f"invalid ORMs: {', '.join(missing)} not provided"
             logger.error(msg)
             raise ValueError(msg)
-        self.Event = event_creator(config["orms"])
-        self.File = file_creator(config["orms"])
+        self.Event = event_creator(config["tablenames"])
+        self.File = file_creator(config["tablenames"])
 
         self.batch_size = config.get("batch_size", 10)
         self.daemon = config.get("daemon", True)
         self.pause = config.get("pause", 1)
-        self.pool_size = config.get("num_threads", 1)
+        self.num_threads = config.get("num_threads", 1)
         self.status = config.get("file_status", Status.UNTRIED.value)
         if self.status == Status.SUCCESS.value:
             msg = f"invalid status: {self.status}"
@@ -139,7 +139,7 @@ class Ingester(object):
                         msg = "no such file in the storage area"
                         logger.warning(f"cannot process '{path}': " + msg)
                         fields = {
-                            "realpath": path,
+                            "abspath": path,
                             "timestamp": ts,
                             "duration": 0,
                             "message": msg,
@@ -151,19 +151,19 @@ class Ingester(object):
 
             # Create a pool of workers to ingest the files. The pool will be
             # freed once processing is completed.
-            pool = []
-            pool_size = min(self.pool_size, inp.qsize())
-            for _ in range(pool_size):
+            threads = []
+            num_threads = min(self.num_threads, inp.qsize())
+            for _ in range(num_threads):
                 t = threading.Thread(target=worker,
                                      args=(inp, out, err),
                                      kwargs={"task": self.plugin})
                 t.start()
-                pool.append(t)
-            for _ in range(len(pool)):
+                threads.append(t)
+            for _ in range(len(threads)):
                 inp.put(None)
-            for t in pool:
+            for t in threads:
                 t.join()
-            del pool[:]
+            del threads[:]
 
             # Process the results of the ingest attempts.
             processed = {}
@@ -295,14 +295,14 @@ class Ingester(object):
         """
         events = {}
         while not channel.empty():
-            realpath, timestamp, duration, message, version = channel.get()
+            abspath, timestamp, duration, message, version = channel.get()
             fields = {
                 "ingest_ver": version,
                 "start_time": timestamp,
                 "duration": duration,
                 "err_message": message,
             }
-            events[realpath] = self.Event(**fields)
+            events[abspath] = self.Event(**fields)
         return events
 
 
@@ -344,7 +344,7 @@ def worker(inp, out, err, task=None):
         finally:
             duration = datetime.datetime.now() - start
             fields = {
-                "realpath": filename,
+                "abspath": filename,
                 "timestamp": start,
                 "duration": duration,
                 "message": msg,

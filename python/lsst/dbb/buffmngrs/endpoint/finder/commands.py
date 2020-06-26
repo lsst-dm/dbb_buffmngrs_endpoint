@@ -99,7 +99,7 @@ def start(filename, validate):
     logger.info("setting up Finder...")
     config = configuration["finder"]
     config["session"] = session
-    config["orms"] = mapper
+    config["tablenames"] = mapper
 
     # Set up standard and alternative file actions.
     package_name = "lsst.dbb.buffmngrs.endpoint.finder"

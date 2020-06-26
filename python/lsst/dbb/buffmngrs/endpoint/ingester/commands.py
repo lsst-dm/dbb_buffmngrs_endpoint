@@ -94,7 +94,7 @@ def start(filename, validate):
     logger.info("setting up Ingester...")
     config = configuration["ingester"]
     config["session"] = session
-    config["orms"] = mapper
+    config["tablenames"] = mapper
 
     # Configure ingest plugin.
     package_name = "lsst.dbb.buffmngrs.endpoint.ingester"
