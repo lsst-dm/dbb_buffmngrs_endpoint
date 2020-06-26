@@ -62,7 +62,19 @@ def start(filename, validate):
 
     logger.info("setting up database connection...")
     config = configuration["database"]
-    engine = create_engine(config["engine"], echo=config.get("echo", False))
+
+    module = importlib.import_module("sqlalchemy.pool")
+    pool_name = config.get("pool_class", "QueuePool")
+    try:
+        class_ = getattr(module, pool_name)
+    except AttributeError:
+        msg = f"unknown connection pool type: {pool_name}"
+        logger.error(msg)
+        raise RuntimeError(msg)
+
+    engine = create_engine(config["engine"],
+                           echo=config.get("echo", False),
+                           poolclass=class_)
 
     logger.info("checking if required tables exist...")
     required = {table for table in config["tablenames"].values()}

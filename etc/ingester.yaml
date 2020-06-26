@@ -4,6 +4,7 @@ database:
     file: loc_inst_files
     event: loc_inst_gen2_file_events
 #  echo: false
+#  pool_class: QueuePool
 ingester:
   plugin:
     name: Gen2Ingest

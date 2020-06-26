@@ -43,6 +43,8 @@ properties:
                     - file
             echo:
                 type: boolean
+            pool_class:
+                type: string
         required:
             - engine
             - tablenames
@@ -123,6 +125,8 @@ properties:
                     - event
             echo:
                 type: boolean
+            pool_class:
+                type: string
         required:
             - engine
             - tablenames
