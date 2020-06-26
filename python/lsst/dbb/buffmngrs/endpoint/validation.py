@@ -85,7 +85,9 @@ properties:
                                   types: string
                             - type: "null"
                     date:
-                        type: string
+                        anyOf:
+                            - type: string
+                            - type: "null"
                     timespan:
                         type: integer
                         minimum: 0
@@ -138,13 +140,41 @@ properties:
                 properties:
                     name:
                         type: string
-                    config:
-                        type: object
-                        properties:
-                            root:
-                                type: string
-                        required:
-                            - root
+                allOf:
+                    -
+                        if:
+                            properties:
+                                name:
+                                    const: Gen2Ingest
+                        then:
+                            properties:
+                                config:
+                                    type: object
+                                    properties:
+                                        root:
+                                            type: string
+                                        mode:
+                                            type: string
+                                    required:
+                                        - root
+                    -
+                        if: 
+                            properties:
+                                name:
+                                    const: Gen3Ingest
+                        then:
+                            properties:
+                                config:
+                                    type: object
+                                    properties:
+                                        root:
+                                            type: string
+                                        run:
+                                            type: string
+                                        transfer:
+                                            type: string
+                                    required:
+                                        - root
                 required:
                     - name
                     - config

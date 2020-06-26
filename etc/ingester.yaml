@@ -10,6 +10,7 @@ ingester:
     name: Gen2Ingest
     config:
       root: /data/gen2repo
+#      mode: link
 # file_status: untried
 # batch_size: 10
 # daemon: true
