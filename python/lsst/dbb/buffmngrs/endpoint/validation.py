@@ -18,6 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Descriptions of a valid configuration files.
+"""
 
 
 __all__ = ["finder", "ingester"]
@@ -32,7 +34,7 @@ properties:
         properties:
             engine:
                 type: string
-            orms:
+            tablenames:
                 type: object
                 properties:
                     file:
@@ -43,7 +45,7 @@ properties:
                 type: boolean
         required:
             - engine
-            - orms
+            - tablenames
     finder:
         type: object
         properties:
@@ -109,14 +111,12 @@ properties:
         properties:
             engine:
                 type: string
-            orms:
+            tablenames:
                 type: object
                 properties:
                     file:
                         type: string
-                    status:
-                        type: string
-                    attempt:
+                    event:
                         type: string
                 required:
                     - file
@@ -125,7 +125,7 @@ properties:
                 type: boolean
         required:
             - engine
-            - orms
+            - tablenames
     ingester:
         type: object
         properties:
@@ -151,7 +151,7 @@ properties:
                 minimum: 1
             daemon:
                 type: boolean
-            pool_size:
+            num_threads:
                 type: integer
                 minimum: 1
             pause:

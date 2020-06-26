@@ -27,7 +27,7 @@ import yaml
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 from .finder import Finder
-from .. import schemas
+from .. import validation
 from ..utils import setup_logger
 
 
@@ -49,7 +49,7 @@ def start(filename, validate):
     with open(filename) as f:
         configuration = yaml.safe_load(f)
     if validate:
-        schema = yaml.safe_load(schemas.finder)
+        schema = yaml.safe_load(validation.finder)
         try:
             jsonschema.validate(instance=configuration, schema=schema)
         except jsonschema.ValidationError as ex:
