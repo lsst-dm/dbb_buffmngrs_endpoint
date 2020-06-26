@@ -75,7 +75,7 @@ class Macro(Action):
             ValueError(f"Cannot add {act}: not an Action.")
         self._actions.append(act)
 
-    def pop(self, i=None):
+    def remove(self, i=None):
         """Remove an action at the given position the sequence.
 
         If no index is specified, it removes the last action in the sequence.
