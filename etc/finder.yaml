@@ -1,8 +1,8 @@
 database:
   engine: "postgres://tester:password@localhost:5432/test"
-  orms:
-    file: files
-    event: gen2_files_events
+  tablenames:
+    file: loc_inst_files
+    event: loc_inst_files
 #  echo: false
 finder:
   source: /data/buffer

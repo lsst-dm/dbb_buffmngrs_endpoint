@@ -65,7 +65,7 @@ def start(filename, validate):
     engine = create_engine(config["engine"], echo=config.get("echo", False))
 
     logger.info("checking if required tables exist...")
-    required = {table for table in config["orms"].values()}
+    required = {table for table in config["tablenames"].values()}
     available = set(inspect(engine).get_table_names())
     missing = required - available
     if missing:
@@ -76,7 +76,7 @@ def start(filename, validate):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    mapper = config["orms"]
+    mapper = config["tablenames"]
 
     logger.info("setting up Ingester...")
     config = configuration["ingester"]

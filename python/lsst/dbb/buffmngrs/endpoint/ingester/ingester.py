@@ -89,7 +89,7 @@ class Ingester(object):
         self.batch_size = config.get("batch_size", 10)
         self.daemon = config.get("daemon", True)
         self.pause = config.get("pause", 1)
-        self.pool_size = config.get("pool_size", 1)
+        self.pool_size = config.get("num_threads", 1)
         self.status = config.get("file_status", Status.UNTRIED.value)
         if self.status == Status.SUCCESS.value:
             msg = f"invalid status: {self.status}"
