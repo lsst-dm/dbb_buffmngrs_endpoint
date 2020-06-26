@@ -23,6 +23,7 @@ import importlib
 import inspect
 import jsonschema
 import logging
+import sys
 import yaml
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
@@ -60,6 +61,7 @@ def start(filename, validate):
             msg = f"schema error: {ex.message}."
             logger.error(msg)
             raise ValueError(msg)
+        return
 
     config = configuration.get("logging", None)
     setup_logger(logging.getLogger(), options=config)

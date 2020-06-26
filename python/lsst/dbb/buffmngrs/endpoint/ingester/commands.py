@@ -56,6 +56,7 @@ def start(filename, validate):
             raise ValueError(f"Configuration error: {ex.message}.")
         except jsonschema.SchemaError as ex:
             raise ValueError(f"Schema error: {ex.message}.")
+        return
 
     config = configuration.get("logging", None)
     setup_logger(logging.getLogger(), options=config)
