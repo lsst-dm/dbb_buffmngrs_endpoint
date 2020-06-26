@@ -27,7 +27,7 @@ import time
 import traceback
 from collections import namedtuple
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.sql.expression import func
+from sqlalchemy.sql.expression import exists, func
 from .plugins import NullIngest
 from ..declaratives import event_creator, file_creator
 from ..status import Status
@@ -175,7 +175,6 @@ class Ingester(object):
                 rec, evt = records[url], events[url]
                 evt.status = Status.SUCCESS
                 evt.files_id = rec.id
-                rec.events.append(evt)
             processed.update(events)
 
             # Update statuses of the files for which ingest attempt was made
@@ -185,7 +184,6 @@ class Ingester(object):
                 rec, evt = records[url], events[url]
                 evt.status = Status.FAILURE
                 evt.files_id = rec.id
-                rec.events.append(evt)
             processed.update(events)
 
             # Update statuses of the files for which the ingest attempt failed
@@ -198,7 +196,6 @@ class Ingester(object):
                                  start_time=datetime.datetime.now(),
                                  files_id=rec.id)
                 events[url] = evt
-                rec.events.append(evt)
             processed.update(events)
 
             # Commit all changes to the database.
@@ -226,7 +223,7 @@ class Ingester(object):
         #         WHERE e.files_id = f.id);
         try:
             query = self.session.query(self.File.id).\
-                filter(~self.File.events.any())
+                filter(~exists().where(self.Event.files_id == self.File.id))
         except Exception as ex:
             logger.error(f"failed to check for new files: {ex}")
         else:

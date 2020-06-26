@@ -61,7 +61,6 @@ def file_creator(orms):
         "filename": Column(String, nullable=False, unique=True),
         "checksum": Column(String, nullable=False, unique=True),
         "added_on": Column(DateTime, nullable=False, default=datetime.now),
-        "events": relationship("Event", backref="file")
     }
     return type("File", (Base,), attributes)
 
@@ -80,8 +79,9 @@ def event_creator(orms):
     `sqlalchemy.ext.declarative.api.DeclarativeMeta`
         A declarative (class), a Pythonic representation of database table.
     """
+    tablename = orms["event"]
     attributes = {
-        "__tablename__": orms["event"],
+        "__tablename__": tablename,
         "ingest_ver": Column(String),
         "start_time": Column(DateTime, primary_key=True),
         "duration": Column(Interval),

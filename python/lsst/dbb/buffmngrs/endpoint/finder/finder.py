@@ -26,7 +26,7 @@ import re
 import sys
 import time
 from sqlalchemy.exc import SQLAlchemyError
-from ..declaratives import event_creator, file_creator
+from ..declaratives import file_creator
 
 
 __all__ = ["Finder"]
@@ -75,13 +75,12 @@ class Finder(object):
 
         # Create necessary object-relational mappings. We are doing it
         # dynamically as RDBMS tables to use are determined at runtime.
-        required = {"event", "file"}
+        required = {"file"}
         missing = required - set(config["orms"])
         if missing:
             msg = f"invalid ORMs: {', '.join(missing)} not provided"
             logger.error(msg)
             raise ValueError(msg)
-        self.Event = event_creator(config["orms"])
         self.File = file_creator(config["orms"])
 
         # Check if provided source and storage location exists.
