@@ -32,6 +32,11 @@ def setup_logger(logger, options=None):
        Logger settings. The key/value pairs it contains will be used to
        override corresponding default settings.  If empty or None (default),
        logger will be set up with default settings.
+
+    Returns
+    -------
+    `logging.Logger`
+        A root logger to use.
     """
     # Define default settings for the logger. They will be overridden with
     # values found in 'options', if specified.

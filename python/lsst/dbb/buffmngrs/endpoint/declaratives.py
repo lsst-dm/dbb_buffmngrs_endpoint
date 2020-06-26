@@ -46,7 +46,8 @@ def file_creator(orms):
     Parameters
     ----------
     orms : `dict`
-        Name of the table in the database.
+        A mapping between declarative names and the names of the database
+        table it represents.
 
     Returns
     -------
@@ -71,7 +72,8 @@ def event_creator(orms):
     Parameters
     ----------
     orms : `dict`
-        Name of the table in the database.
+        A mapping between declarative names and the names of the database
+        table it represents.
 
     Returns
     -------
