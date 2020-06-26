@@ -96,11 +96,6 @@ class Macro(Action):
         ----------
         path : `str`
             Path to the file.
-
-        Returns
-        -------
-        `str`
-            Location of the file after actions are executed.
         """
         self._fp = path
         for a in self._actions:
