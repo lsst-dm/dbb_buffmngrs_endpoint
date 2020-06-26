@@ -98,8 +98,14 @@ def start(filename, validate):
 
     logger.info("setting up Finder...")
     config = configuration["finder"]
-    config["session"] = session
-    config["tablenames"] = mapper
+
+    # Create Finder specific configuration. It is initialized with
+    # settings from relevant section of the global configuration, but new
+    # settings may be added, already existing once may be altered.
+    finder_config = dict(config)
+
+    finder_config["session"] = session
+    finder_config["tablenames"] = mapper
 
     # Set up standard and alternative file actions.
     package_name = "lsst.dbb.buffmngrs.endpoint.finder"
@@ -121,8 +127,8 @@ def start(filename, validate):
             except ValueError as ex:
                 msg = f"{class_.__name__}: invalid configuration: {ex}."
                 raise RuntimeError(msg)
-            config[type_] = action
+            finder_config[type_] = action
 
     logger.info("starting Finder...")
-    finder = Finder(config)
+    finder = Finder(finder_config)
     finder.run()

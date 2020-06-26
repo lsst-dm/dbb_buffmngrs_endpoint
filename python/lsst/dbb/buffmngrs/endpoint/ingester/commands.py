@@ -93,8 +93,14 @@ def start(filename, validate):
 
     logger.info("setting up Ingester...")
     config = configuration["ingester"]
-    config["session"] = session
-    config["tablenames"] = mapper
+
+    # Create Ingester specific configuration. It is initialized with
+    # settings from relevant section of the global configuration, but new
+    # settings may be added, already existing once may be altered.
+    ingester_config = dict(config)
+
+    ingester_config["session"] = session
+    ingester_config["tablenames"] = mapper
 
     # Configure ingest plugin.
     package_name = "lsst.dbb.buffmngrs.endpoint.ingester"
@@ -113,8 +119,8 @@ def start(filename, validate):
         except ValueError as ex:
             msg = f"{class_.__name__}: invalid configuration: {ex}."
             raise RuntimeError(msg)
-        config["plugin"] = plugin
+        ingester_config["plugin"] = plugin
 
     logger.info("starting Ingester...")
-    ingester = Ingester(config)
+    ingester = Ingester(ingester_config)
     ingester.run()
