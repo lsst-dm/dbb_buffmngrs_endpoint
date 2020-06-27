@@ -14,7 +14,7 @@ ingester:
   file_status: untried
   batch_size: 10
   daemon: true
-  pool_size: 1
+  num_threads: 1
   pause: 1
 logging:
   file: null
