@@ -21,7 +21,7 @@
 import abc
 
 
-__all__ = ["Action", "Macro"]
+__all__ = ["Action", "Macro", "Plugin"]
 
 
 class Action(abc.ABC):
@@ -113,3 +113,19 @@ class Macro(Action):
         for a in reversed(self._actions):
             a.undo()
             self._fp = a.filepath
+
+
+class Plugin(abc.ABC):
+    """Define the interface for the ingest plugin.
+    """
+    @abc.abstractmethod
+    def execute(self, path):
+        """Run plugin.
+        """
+        pass
+
+    @abc.abstractmethod
+    def version(self):
+        """Return the version of the data management system ingest software.
+        """
+        pass

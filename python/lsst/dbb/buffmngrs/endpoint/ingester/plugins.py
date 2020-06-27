@@ -23,6 +23,7 @@ import logging
 import lsst.daf.butler as butler
 import lsst.pipe.tasks.ingest as ingest
 import lsst.obs.base as base
+from ..abcs import Plugin
 
 
 __all__ = ["NullIngest", "Gen2Ingest", "Gen3Ingest"]
@@ -31,7 +32,7 @@ __all__ = ["NullIngest", "Gen2Ingest", "Gen3Ingest"]
 logger = logging.getLogger(__name__)
 
 
-class NullIngest(object):
+class NullIngest(Plugin):
     """Do nothing.
 
     A null object, a no-op.
@@ -47,7 +48,7 @@ class NullIngest(object):
         pass
 
 
-class Gen2Ingest(object):
+class Gen2Ingest(Plugin):
     """Ingest a file to Gen2 Butler repository.
 
     Parameters
@@ -69,6 +70,7 @@ class Gen2Ingest(object):
             logger.error(msg)
             raise ValueError(msg)
         root = config["root"]
+
         mode = config.get("mode", "link")
         opts = dict(mode=mode)
         self.task = ingest.IngestTask.prepareTask(root, **opts)
@@ -122,7 +124,7 @@ class Gen2Ingest(object):
             raise RuntimeError(ex)
 
 
-class Gen3Ingest(object):
+class Gen3Ingest(Plugin):
     """Ingest a file to Gen2 Butler repository.
 
     Parameters

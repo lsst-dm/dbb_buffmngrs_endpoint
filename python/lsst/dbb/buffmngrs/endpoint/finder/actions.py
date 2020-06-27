@@ -21,7 +21,7 @@
 import logging
 import os
 import shutil
-from .abcs import Action
+from ..abcs import Action
 
 
 __all__ = ["Null", "Move", "Delete"]
