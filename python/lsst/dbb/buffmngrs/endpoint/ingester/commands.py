@@ -106,20 +106,13 @@ def start(filename, validate):
     package_name = "lsst.dbb.buffmngrs.endpoint.ingester"
     module = importlib.import_module(".plugins", package=package_name)
     plugin_name = config["plugin"]["name"]
-    plugin_config = config["plugin"]["config"]
     try:
         class_ = getattr(module, plugin_name)
     except AttributeError as ex:
         msg = f"Unknown ingest plugin '{plugin_name}'."
         logger.error(msg)
         raise RuntimeError(msg)
-    else:
-        try:
-            plugin = class_(plugin_config)
-        except ValueError as ex:
-            msg = f"{class_.__name__}: invalid configuration: {ex}."
-            raise RuntimeError(msg)
-        ingester_config["plugin"] = plugin
+    ingester_config["plugin"]["class"] = class_
 
     logger.info("starting Ingester...")
     ingester = Ingester(ingester_config)

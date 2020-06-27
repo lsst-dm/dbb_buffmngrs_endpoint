@@ -73,7 +73,11 @@ class Ingester(object):
             msg = f"invalid configuration: {', '.join(missing)} not provided"
             logger.error(msg)
             raise ValueError(msg)
-        self.plugin = config["plugin"]
+
+        section = config["plugin"]
+        self.plugin_cls = section["class"]
+        self.plugin_cfg = section["config"]
+
         self.session = config["session"]
         self.storage = config["storage"]
 
@@ -156,7 +160,8 @@ class Ingester(object):
             for _ in range(num_threads):
                 t = threading.Thread(target=worker,
                                      args=(inp, out, err),
-                                     kwargs={"task": self.plugin})
+                                     kwargs={"plugin_cls": self.plugin_cls,
+                                             "plugin_cfg": self.plugin_cfg})
                 t.start()
                 threads.append(t)
             for _ in range(len(threads)):
@@ -306,7 +311,7 @@ class Ingester(object):
         return events
 
 
-def worker(inp, out, err, task=None):
+def worker(inp, out, err, plugin_cls=None, plugin_cfg=None):
     """Perform a given task for incoming inputs.
 
     Function representing a thread worker.  It takes a file name from its input
@@ -321,21 +326,31 @@ def worker(inp, out, err, task=None):
         Output channel for results of the tasks which completed successfully.
     err : queue.Queue()
         Error channel for results of the tasks which failed.
-    task : optional
-        A task to perform on each file name. If None (default), nothing will be
+    plugin_cls : `Plugin`, optional
+        An ingest plugin to use. If None (default), nothing will be
         done, effectively a no-op.
+    plugin_cfg : `dict`, optional
+        Plugin specific configuration. It will be ignored in ``plugin_cls``
+        is None.
     """
-    if task is None:
-        task = NullIngest(dict())
+    # Instantiate the ingest plugin.
+    #
+    # We are doing it here, in the worker, to make sure that any database
+    # connections used in the data management system ingestion code will not
+    # be shared between threads.
+    if plugin_cls is None:
+        plugin_cls = NullIngest
+        plugin_cfg = dict()
+    plugin = plugin_cls(plugin_cfg)
+
     while True:
         filename = inp.get()
         if filename is None:
             break
-
         start = datetime.datetime.now()
         chn, msg = None, None
         try:
-            task.execute(filename)
+            plugin.execute(filename)
         except RuntimeError as ex:
             logger.error(f"{traceback.format_exc()}")
             chn, msg = err, f"{ex}"
@@ -348,6 +363,6 @@ def worker(inp, out, err, task=None):
                 "timestamp": start,
                 "duration": duration,
                 "message": msg,
-                "version": task.version()
+                "version": plugin.version()
             }
             chn.put(Result(**fields))
