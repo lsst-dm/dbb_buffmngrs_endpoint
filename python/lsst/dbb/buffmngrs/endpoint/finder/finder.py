@@ -110,7 +110,7 @@ class Finder(object):
 
         # If we are monitoring rsync transfers, files are already in the
         # storage area. Otherwise they are still in the buffer.
-        self.location = self.storage if method is "parse" else self.source
+        self.location = self.storage if "parse" in method else self.source
 
         # Initialize various optional settings.
         self.pause = config.get("pause", 1)
