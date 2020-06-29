@@ -111,6 +111,8 @@ def start(filename, validate):
     package_name = "lsst.dbb.buffmngrs.endpoint.finder"
     module = importlib.import_module(".actions", package=package_name)
     for type_, name in config["actions"].items():
+        if name is None:
+            name = "Null"
         try:
             class_ = getattr(module, name)
         except AttributeError as ex:

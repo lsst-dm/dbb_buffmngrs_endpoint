@@ -59,17 +59,19 @@ properties:
                 type: object
                 properties:
                     standard:
-                        type: string
-                        enum:
-                            - Delete
-                            - Move
-                            - Noop
+                        anyOf:
+                            - type: string
+                              enum:
+                                - Delete
+                                - Move
+                            - type: "null"
                     alternative:
-                        type: string
-                        enum:
-                            - Delete
-                            - Move
-                            - Noop
+                        anyOf:
+                            - type: string
+                              enum:
+                                - Delete
+                                - Move
+                            - type: "null"
             search:
                 type: object
                 properties:
