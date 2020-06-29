@@ -105,7 +105,7 @@ class Finder(object):
             logger.error(msg)
             raise ValueError(msg)
         self.search_opts = dict(blacklist=search.get("blacklist", None),
-                                date=search.get("date", None),
+                                isodate=search.get("date", None),
                                 timespan=search.get("timespan", 1))
 
         # If we are monitoring rsync transfers, files are already in the
