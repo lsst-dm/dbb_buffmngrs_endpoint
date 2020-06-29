@@ -90,7 +90,7 @@ class Finder(object):
             if not os.path.isdir(path):
                 msg = f"directory '{path}' not found"
                 logger.error(msg)
-                raise ValueError()
+                raise ValueError(msg)
 
         # Set standard and alternative actions based on provided configuration.
         self.dispatch = dict(std=config["standard"], alt=config["alternative"])
