@@ -77,7 +77,7 @@ properties:
                         type: string
                         enum:
                             - scan
-                            - parse
+                            - parse_rsync_logs
                     blacklist:
                         anyOf:
                             - type: array
