@@ -11,7 +11,7 @@ ingester:
     config:
       root: /data/gen2repo
       mode: link
-  file_status: untried
+  file_status: UNTRIED
   batch_size: 10
   daemon: true
   num_threads: 1
