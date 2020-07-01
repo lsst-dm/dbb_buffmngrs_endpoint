@@ -48,7 +48,7 @@ def setup_logger(logger, options=None):
     settings = {
         "file": None,
         "format": "%(asctime)s:%(name)s:%(levelname)s:%(message)s",
-        "level": "WARNING",
+        "level": "INFO",
     }
     if options is not None:
         settings.update(options)

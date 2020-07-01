@@ -19,4 +19,4 @@ finder:
 logging:
   file: null
   format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
-  level: WARNING
+  level: INFO
