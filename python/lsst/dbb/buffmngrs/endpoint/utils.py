@@ -23,16 +23,14 @@ import subprocess
 import yaml
 
 
-__all__ = ["dump_config", "dump_env", "setup_logger"]
+__all__ = ["dump_config", "dump_env", "setup_logging"]
 
 
-def setup_logger(logger, options=None):
+def setup_logging(options=None):
     """Configure logger.
 
     Parameters
     ----------
-    logger : logging.Logger
-        A logger to set up.
     options : dict, optional
        Logger settings. The key/value pairs it contains will be used to
        override corresponding default settings.  If empty or None (default),
@@ -53,20 +51,17 @@ def setup_logger(logger, options=None):
     if options is not None:
         settings.update(options)
 
+    kwargs = {"format": settings["format"]}
+
     level_name = settings["level"]
     level = getattr(logging, level_name.upper(), logging.WARNING)
-    logger.setLevel(level)
+    kwargs["level"] = level
 
-    handler = logging.StreamHandler()
     logfile = settings["file"]
     if logfile is not None:
-        handler = logging.FileHandler(logfile)
-    logger.addHandler(handler)
+        kwargs["filename"] = logfile
 
-    fmt = settings["format"]
-    formatter = logging.Formatter(fmt=fmt, datefmt=None)
-    handler.setFormatter(formatter)
-    return logger
+    logging.basicConfig(**kwargs)
 
 
 def dump_config(config):

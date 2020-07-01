@@ -28,7 +28,7 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 from .finder import Finder
 from .. import validation
-from ..utils import dump_config, dump_env, setup_logger
+from ..utils import dump_config, dump_env, setup_logging
 
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ def start(filename, dump, validate):
         return
 
     config = configuration.get("logging", None)
-    setup_logger(logging.getLogger(), options=config)
+    setup_logging(options=config)
 
     if dump:
         msg = "runtime environment and configuration:\n\n"

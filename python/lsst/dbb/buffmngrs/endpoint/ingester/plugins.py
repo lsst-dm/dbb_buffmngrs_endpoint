@@ -21,6 +21,7 @@
 import importlib
 import logging
 import lsst.daf.butler as butler
+import lsst.log
 import lsst.pipe.tasks.ingest as ingest
 import lsst.obs.base as base
 from ..abcs import Plugin
@@ -73,8 +74,8 @@ class Gen2Ingest(Plugin):
 
         mode = config.get("mode", "link")
         opts = dict(mode=mode)
-        self.task = ingest.IngestTask.prepareTask(root, **opts)
-
+        with lsst.log.UsePythonLogging():
+            self.task = ingest.IngestTask.prepareTask(root, **opts)
         pkg = importlib.import_module(ingest.__package__)
         self._version = "N/A"
         try:
@@ -107,7 +108,8 @@ class Gen2Ingest(Plugin):
             task.
         """
         try:
-            self.task.ingestFiles(filename)
+            with lsst.log.UsePythonLogging():
+                self.task.ingestFiles(filename)
         except Exception as ex:
             # Find the root cause of a exception chain.
             #
