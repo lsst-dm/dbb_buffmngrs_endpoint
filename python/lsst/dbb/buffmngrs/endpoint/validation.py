@@ -171,12 +171,13 @@ properties:
                                     properties:
                                         root:
                                             type: string
-                                        run:
+                                        instrument:
                                             type: string
                                         transfer:
                                             type: string
                                     required:
                                         - root
+                                        - instrument
                 required:
                     - name
                     - config

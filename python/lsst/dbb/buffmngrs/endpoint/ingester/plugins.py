@@ -139,18 +139,41 @@ class Gen3Ingest(Plugin):
     """
 
     def __init__(self, config):
-        required = {"root"}
+        required = {"root", "instrument"}
         missing = required - set(config)
         if missing:
-            msg = f"invalid configuration: {', '.join(missing)} not provide."
+            msg = f"invalid configuration: {', '.join(missing)} not provided"
             logger.error(msg)
             raise ValueError(msg)
         root = config["root"]
 
-        run = config.get("run", "test")
+        name = config["instrument"]
+        try:
+            inst = base.utils.getInstrument(name)
+        except (RuntimeError, TypeError) as ex:
+            raise RuntimeError(ex)
+        else:
+            run = inst.makeDefaultRawIngestRunName()
 
+        # Create a Butler.
         opts = dict(run=run, writeable=True)
         btl = butler.Butler(root, **opts)
+
+        # Make an attempt to register an instrument with Butler. Quietly
+        # ignore the Butler throwing a fit as most likely it means the
+        # instrument is already registered.
+        #
+        # Note:
+        # We're casting a wide net here as the exception most likely will
+        # depend on the database back-end used by Butler. For example,
+        # for SQLite it look like:
+        #
+        #   sqlite3.IntegrityError: UNIQUE constraint failed: instrument.name
+        try:
+            inst.register(btl.registry)
+        except Exception as ex:
+            logger.debug(f"failed to register the instrument {name}: {ex}")
+            pass
 
         cfg = base.RawIngestConfig()
         cfg.transfer = config.get("transfer", "symlink")
