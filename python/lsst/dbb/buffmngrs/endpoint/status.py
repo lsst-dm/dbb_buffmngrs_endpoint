@@ -27,7 +27,7 @@ __all__ = ["Status"]
 class Status(enum.Enum):
     """Enumeration representing valid ingest statuses.
     """
-    UNTRIED = "NEW"
+    UNTRIED = "UNTRIED"
     REISSUE = "RERUN"
     PENDING = "PENDING"
     SUCCESS = "SUCCESS"
