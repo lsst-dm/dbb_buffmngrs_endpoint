@@ -1,4 +1,4 @@
-# This file is part of ctrl_oods
+# This file is part of dbb_buffmngrs_endpoint.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
@@ -18,34 +18,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import unittest
-from lsst.ctrl.oods.timeInterval import TimeInterval
-import lsst.utils.tests
+import enum
 
 
-class IntervalTestCase(lsst.utils.tests.TestCase):
-    """Test cache cleaning"""
-
-    def testFileCleaner(self):
-
-        config = {}
-        config["days"] = 1
-        config["hours"] = 1
-        config["minutes"] = 1
-        config["seconds"] = 1
-
-        seconds = TimeInterval.calculateTotalSeconds(config)
-        self.assertTrue(seconds, 86400+3600+60+1)
+__all__ = ["Status"]
 
 
-class MemoryTester(lsst.utils.tests.MemoryTestCase):
-    pass
-
-
-def setup_module(module):
-    lsst.utils.tests.init()
-
-
-if __name__ == "__main__":
-    lsst.utils.tests.init()
-    unittest.main()
+class Status(enum.Enum):
+    """Enumeration representing valid ingest statuses.
+    """
+    UNTRIED = "UNTRIED"
+    REISSUE = "RERUN"
+    PENDING = "PENDING"
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    UNKNOWN = "UNKNOWN"

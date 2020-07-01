@@ -1,0 +1,22 @@
+database:
+  engine: "postgres://tester:password@localhost:5432/test"
+  tablenames:
+    file: loc_inst_files
+    event: loc_inst_gen2_file_events
+  echo: false
+  pool_class: QueuePool
+ingester:
+  plugin:
+    name: Gen2Ingest
+    config:
+      root: /data/gen2repo
+      mode: link
+  file_status: UNTRIED
+  batch_size: 10
+  daemon: true
+  num_threads: 1
+  pause: 1
+logging:
+  file: null
+  format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
+  level: WARNING

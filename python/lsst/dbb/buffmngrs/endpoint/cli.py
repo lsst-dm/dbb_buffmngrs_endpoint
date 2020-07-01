@@ -1,4 +1,4 @@
-# This file is part of ctrl_oods
+# This file is part of dbb_buffmngrs_endpoint.
 #
 # Developed for the LSST Data Management System.
 # This product includes software developed by the LSST Project
@@ -18,26 +18,25 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-SECONDS_PER_DAY = 86400
-SECONDS_PER_HOUR = 3600
-SECONDS_PER_MINUTE = 60
+import click
+import logging
+from .finder.commands import finder
+from .ingester.commands import ingester
 
 
-class TimeInterval(object):
-    """representation of a time interval from a configuration
+logger = logging.getLogger("lsst.dbb.buffmngrs.endpoint")
+
+
+@click.group()
+def cli():
+    pass
+
+
+cli.add_command(finder)
+cli.add_command(ingester)
+
+
+def main():
+    """Start microservices for DBB endpoint manager.
     """
-
-    @staticmethod
-    def calculateTotalSeconds(config):
-        """calculate the number of seconds represented by this configuration
-        """
-        days = config["days"]
-        hours = config["hours"]
-        minutes = config["minutes"]
-        seconds = config["seconds"]
-
-        total = days * SECONDS_PER_DAY
-        total = total + (hours * SECONDS_PER_HOUR)
-        total = total + (minutes * SECONDS_PER_MINUTE)
-        total = total + seconds
-        return total
+    return cli()
