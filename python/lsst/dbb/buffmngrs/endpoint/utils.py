@@ -19,6 +19,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import logging
+import subprocess
+import yaml
+
+
+__all__ = ["dump_config", "dump_env", "setup_logger"]
 
 
 def setup_logger(logger, options=None):
@@ -62,3 +67,33 @@ def setup_logger(logger, options=None):
     formatter = logging.Formatter(fmt=fmt, datefmt=None)
     handler.setFormatter(formatter)
     return logger
+
+
+def dump_config(config):
+    """Dump the configuration to YAML format.
+
+    Parameters
+    ----------
+    config : `dict`
+        Configuration to dump.
+
+    Returns
+    -------
+    `str`
+        Configuration expressed in YAML format.
+    """
+    return yaml.dump(config, default_flow_style=False)
+
+
+def dump_env():
+    """Dump runtime LSST environment.
+
+    Returns
+    -------
+    `str`
+        Runtime LSST environment in a text format.
+    """
+    process = subprocess.run(["eups", "list", "--setup"],
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             text=True)
+    return process.stdout

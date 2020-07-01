@@ -28,7 +28,7 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 from .ingester import Ingester
 from .. import validation
-from ..utils import setup_logger
+from ..utils import dump_config, dump_env, setup_logger
 
 
 logger = logging.getLogger(__name__)
@@ -40,10 +40,13 @@ def ingester():
 
 
 @ingester.command()
-@click.option("-v", "--validate", is_flag=True, default=False,
+@click.option("--dump/--no-dump", default=True,
+              help="Log runtime environment and configuration "
+                   "(ignored if severity is set to WARNING and higher).")
+@click.option("--validate/--no-validate", default=False,
               help="Validate configuration before starting the service.")
 @click.argument("filename", type=click.Path(exists=True))
-def start(filename, validate):
+def start(filename, dump, validate):
     """Starts an ingester using a configuration from FILENAME.
     """
     with open(filename) as f:
@@ -60,6 +63,13 @@ def start(filename, validate):
 
     config = configuration.get("logging", None)
     setup_logger(logging.getLogger(), options=config)
+
+    if dump:
+        msg = "runtime environment and configuration:\n\n"
+        msg += dump_env()
+        msg += "\n"
+        msg += dump_config(configuration)
+        logger.info(msg)
 
     logger.info("setting up database connection...")
     config = configuration["database"]
