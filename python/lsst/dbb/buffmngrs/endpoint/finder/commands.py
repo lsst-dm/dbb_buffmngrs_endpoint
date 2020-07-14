@@ -116,7 +116,7 @@ def start(filename, dump, validate):
 
     # Create Finder specific configuration. It is initialized with
     # settings from relevant section of the global configuration, but new
-    # settings may be added, already existing once may be altered.
+    # settings may be added, already existing ones may be altered.
     finder_config = dict(config)
 
     finder_config["session"] = session

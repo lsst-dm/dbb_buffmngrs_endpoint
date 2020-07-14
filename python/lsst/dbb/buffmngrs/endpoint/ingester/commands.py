@@ -112,7 +112,7 @@ def start(filename, dump, validate):
 
     # Create Ingester specific configuration. It is initialized with
     # settings from relevant section of the global configuration, but new
-    # settings may be added, already existing once may be altered.
+    # settings may be added, already existing ones may be altered.
     ingester_config = dict(config)
 
     ingester_config["session"] = session
