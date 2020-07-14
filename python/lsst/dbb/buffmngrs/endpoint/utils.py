@@ -19,15 +19,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import logging
+import subprocess
+import yaml
 
 
-def setup_logger(logger, options=None):
+__all__ = ["dump_config", "dump_env", "setup_logging"]
+
+
+def setup_logging(options=None):
     """Configure logger.
 
     Parameters
     ----------
-    logger : logging.Logger
-        A logger to set up.
     options : dict, optional
        Logger settings. The key/value pairs it contains will be used to
        override corresponding default settings.  If empty or None (default),
@@ -43,22 +46,49 @@ def setup_logger(logger, options=None):
     settings = {
         "file": None,
         "format": "%(asctime)s:%(name)s:%(levelname)s:%(message)s",
-        "level": "WARNING",
+        "level": "INFO",
     }
     if options is not None:
         settings.update(options)
 
+    kwargs = {"format": settings["format"]}
+
     level_name = settings["level"]
     level = getattr(logging, level_name.upper(), logging.WARNING)
-    logger.setLevel(level)
+    kwargs["level"] = level
 
-    handler = logging.StreamHandler()
     logfile = settings["file"]
     if logfile is not None:
-        handler = logging.FileHandler(logfile)
-    logger.addHandler(handler)
+        kwargs["filename"] = logfile
 
-    fmt = settings["format"]
-    formatter = logging.Formatter(fmt=fmt, datefmt=None)
-    handler.setFormatter(formatter)
-    return logger
+    logging.basicConfig(**kwargs)
+
+
+def dump_config(config):
+    """Dump the configuration to YAML format.
+
+    Parameters
+    ----------
+    config : `dict`
+        Configuration to dump.
+
+    Returns
+    -------
+    `str`
+        Configuration expressed in YAML format.
+    """
+    return yaml.dump(config, default_flow_style=False)
+
+
+def dump_env():
+    """Dump runtime LSST environment.
+
+    Returns
+    -------
+    `str`
+        Runtime LSST environment in a text format.
+    """
+    process = subprocess.run(["eups", "list", "--setup"],
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             text=True)
+    return process.stdout
