@@ -89,12 +89,18 @@ def start(filename, dump, validate):
 
     logger.info("checking if required database tables exist...")
     required = {table for table in config["tablenames"].values()}
-    available = set(inspect(engine).get_table_names())
-    missing = required - available
-    if missing:
-        msg = f"table(s) {', '.join(missing)} not found in the database"
+    try:
+        available = set(inspect(engine).get_table_names())
+    except Exception as ex:
+        msg = f"{ex}"
         logger.error(msg)
         raise RuntimeError(msg)
+    else:
+        missing = required - available
+        if missing:
+            msg = f"table(s) {', '.join(missing)} not found in the database"
+            logger.error(msg)
+            raise RuntimeError(msg)
 
     Session = sessionmaker(bind=engine)
     session = Session()
