@@ -165,8 +165,8 @@ class Finder(object):
                     filename=basename,
                     checksum=checksum,
                 )
+                self.session.add(entry)
                 try:
-                    self.session.add(entry)
                     self.session.commit()
                 except Exception as ex:
                     logger.error(f"creating a database entry for {relpath} "

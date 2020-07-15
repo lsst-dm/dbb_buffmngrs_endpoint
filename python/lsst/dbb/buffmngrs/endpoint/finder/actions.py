@@ -178,17 +178,25 @@ class Move(Action):
             raise RuntimeError(f"cannot undo: {ex}")
         self._fp = self.old
 
-        # Remove empty subdirectories created while moving the file its
-        # original location.
-        cwd = os.getcwd()
+        # Attempt remove empty subdirectories created while moving the file
+        # from its original location.
         try:
+            cwd = os.getcwd()
             os.chdir(self.dst)
-            os.removedirs(os.path.dirname(self.new))
+
+            # Quietly ignore errors. Apart from catastrophic file system
+            # failures, the most likely cause of problems will be the leaf
+            # directory not being empty which is fine.
+            try:
+                os.removedirs(os.path.dirname(self.new))
+            except OSError:
+                pass
+
+            os.chdir(cwd)
         except OSError as ex:
             raise RuntimeError(f"cannot clean up: {ex}")
-        finally:
-            os.chdir(cwd)
-            self.old, self.new = None, None
+
+        self.old, self.new = None, None
 
     def __repr__(self):
         config = dict(src=self.src, dst=self.dst)
