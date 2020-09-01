@@ -125,11 +125,21 @@ class Ingester(object):
                 logger.debug(msg + f"next check in {self.pause} sec.")
                 time.sleep(self.pause)
                 continue
+
+            # Schedule an ingest attempt for each file, except when a file
+            # does not exist or is empty.
             for path, rec in records.items():
-                if not os.path.isfile(path):
-                    ts = datetime.datetime.now()
-                    msg = f"no such file in the storage area '{self.storage}'"
+                msg = ""
+                try:
+                    sz = os.stat(path).st_size
+                except FileNotFoundError:
+                    msg = "no such file in the storage area"
+                else:
+                    if sz == 0:
+                        msg = f"file has {sz} bytes"
+                if msg:
                     logger.warning(f"cannot process '{path}': " + msg)
+                    ts = datetime.datetime.now()
                     fields = {
                         "abspath": path,
                         "timestamp": ts,

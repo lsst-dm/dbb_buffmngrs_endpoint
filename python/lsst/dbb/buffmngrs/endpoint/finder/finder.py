@@ -132,9 +132,11 @@ class Finder(object):
                     logger.error(f"{abspath}: no such file")
                     logger.debug(f"terminating processing of '{abspath}'")
                     continue
+                filename = os.path.basename(relpath)
                 try:
                     records = self.session.query(self.File).\
-                        filter(self.File.checksum == checksum).all()
+                        filter(self.File.checksum == checksum,
+                               self.File.filename == filename).all()
                 except SQLAlchemyError as ex:
                     logger.error(f"cannot check for duplicates: {ex}")
                     logger.debug(f"terminating processing of '{abspath}'")
