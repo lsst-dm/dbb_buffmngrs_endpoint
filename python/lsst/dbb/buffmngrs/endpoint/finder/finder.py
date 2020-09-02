@@ -145,7 +145,7 @@ class Finder(object):
                     dups = ", ".join(str(rec.id) for rec in records)
                     logger.error(f"file '{abspath}' already in the "
                                  f"storage area '{self.storage}: "
-                                 f"(see row(s): {dups}), removing")
+                                 f"(see row(s): {dups})")
                     action_type = "alt"
 
                 action = self.dispatch[action_type]
