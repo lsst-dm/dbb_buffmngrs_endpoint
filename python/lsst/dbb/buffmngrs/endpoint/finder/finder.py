@@ -132,9 +132,11 @@ class Finder(object):
                     logger.error(f"{abspath}: no such file")
                     logger.debug(f"terminating processing of '{abspath}'")
                     continue
+                filename = os.path.basename(relpath)
                 try:
                     records = self.session.query(self.File).\
-                        filter(self.File.checksum == checksum).all()
+                        filter(self.File.checksum == checksum,
+                               self.File.filename == filename).all()
                 except SQLAlchemyError as ex:
                     logger.error(f"cannot check for duplicates: {ex}")
                     logger.debug(f"terminating processing of '{abspath}'")
@@ -143,7 +145,7 @@ class Finder(object):
                     dups = ", ".join(str(rec.id) for rec in records)
                     logger.error(f"file '{abspath}' already in the "
                                  f"storage area '{self.storage}: "
-                                 f"(see row(s): {dups}), removing")
+                                 f"(see row(s): {dups})")
                     action_type = "alt"
 
                 action = self.dispatch[action_type]
