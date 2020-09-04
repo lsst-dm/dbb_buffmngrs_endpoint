@@ -313,7 +313,7 @@ def parse_rsync_logs(directory, blacklist=None,
             continue
         for dirpath, _, filenames in os.walk(top):
             manifests = [os.path.join(dirpath, fn) for fn in filenames
-                         if re.match(r"^rsync.*log$", fn)]
+                         if re.match(r"rsync.*log$", fn)]
             for manifest in manifests:
                 sentinel = ".".join([manifest, extension])
 
@@ -356,7 +356,7 @@ def parse_rsync_logs(directory, blacklist=None,
                         if "<f+++++++++" not in line:
                             continue
                         _, _, path, *_ = line.strip().split()
-                        if any(re.match(patt, path) for patt in blacklist):
+                        if any(re.search(patt, path) for patt in blacklist):
                             continue
                         yield path
                 os.mknod(sentinel)
