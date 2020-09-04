@@ -18,6 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Definitions of actions Finder can perform on files it founds.
+"""
 import logging
 import os
 import shutil

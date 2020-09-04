@@ -18,6 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Component responsible for file discovery.
+"""
 import hashlib
 import logging
 import os
@@ -35,7 +37,7 @@ __all__ = ["Finder"]
 logger = logging.getLogger(__name__)
 
 
-class Finder(object):
+class Finder:
     """Framework responsible for file discovery.
 
     Finder constantly monitors a designated source location for new files.
