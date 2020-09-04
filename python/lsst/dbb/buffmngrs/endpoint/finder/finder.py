@@ -243,7 +243,7 @@ def scan(directory, blacklist=None, **kwargs):
     """
     if blacklist is None:
         blacklist = []
-    for dirpath, dirnames, filenames in os.walk(directory):
+    for dirpath, _, filenames in os.walk(directory):
         for fn in filenames:
             path = os.path.relpath(os.path.join(dirpath, fn), start=directory)
             if any(re.search(patt, path) for patt in blacklist):
@@ -311,7 +311,7 @@ def parse_rsync_logs(directory, blacklist=None,
         top = os.path.join(directory, day.isoformat().replace("-", ""))
         if not os.path.exists(top):
             continue
-        for dirpath, dirnames, filenames in os.walk(top):
+        for dirpath, _, filenames in os.walk(top):
             manifests = [os.path.join(dirpath, fn) for fn in filenames
                          if re.match(r"^rsync.*log$", fn)]
             for manifest in manifests:
