@@ -26,13 +26,13 @@ import shutil
 from ..abcs import Action
 
 
-__all__ = ["Null", "Move", "Delete"]
+__all__ = ["Noop", "Move", "Delete"]
 
 
 logger = logging.getLogger(__name__)
 
 
-class Null(Action):
+class Noop(Action):
     """Do nothing.
 
     A null object, a no-op action.
