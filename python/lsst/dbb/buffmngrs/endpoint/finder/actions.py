@@ -18,19 +18,21 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Definitions of actions Finder can perform on files it founds.
+"""
 import logging
 import os
 import shutil
 from ..abcs import Action
 
 
-__all__ = ["Null", "Move", "Delete"]
+__all__ = ["Noop", "Move", "Delete"]
 
 
 logger = logging.getLogger(__name__)
 
 
-class Null(Action):
+class Noop(Action):
     """Do nothing.
 
     A null object, a no-op action.

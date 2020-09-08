@@ -18,6 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Command line interface for the Finder component.
+"""
 import click
 import importlib
 import inspect
@@ -36,6 +38,8 @@ logger = logging.getLogger(__name__)
 
 @click.group()
 def finder():
+    """A group that all commands controlling Finder are attached to.
+    """
     pass
 
 
@@ -92,7 +96,7 @@ def start(filename, dump, validate):
                            poolclass=class_)
 
     logger.info("checking if required database table exists...")
-    required = {table for table in config["tablenames"].values()}
+    required = set(config["tablenames"].values())
     try:
         available = set(inspect(engine).get_table_names())
     except Exception as ex:
@@ -147,5 +151,5 @@ def start(filename, dump, validate):
             finder_config[type_] = action
 
     logger.info("starting Finder...")
-    finder = Finder(finder_config)
-    finder.run()
+    component = Finder(finder_config)
+    component.run()

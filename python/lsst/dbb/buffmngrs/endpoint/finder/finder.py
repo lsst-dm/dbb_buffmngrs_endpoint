@@ -18,13 +18,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import datetime
+"""Component responsible for file discovery.
+"""
 import hashlib
 import logging
 import os
 import re
 import sys
 import time
+from datetime import date, datetime, timedelta
 from sqlalchemy.exc import SQLAlchemyError
 from ..declaratives import file_creator
 
@@ -35,7 +37,7 @@ __all__ = ["Finder"]
 logger = logging.getLogger(__name__)
 
 
-class Finder(object):
+class Finder:
     """Framework responsible for file discovery.
 
     Finder constantly monitors a designated source location for new files.
@@ -106,7 +108,8 @@ class Finder(object):
             raise ValueError(msg)
         self.search_opts = dict(blacklist=search.get("blacklist", None),
                                 isodate=search.get("date", None),
-                                timespan=search.get("timespan", 1))
+                                timespan=search.get("timespan", 1),
+                                delay=search.get("delay", 60))
 
         # If we are monitoring rsync transfers, files are already in the
         # storage area. Otherwise they are still in the buffer.
@@ -125,7 +128,7 @@ class Finder(object):
 
                 action_type = "std"
 
-                logger.debug(f"checking if not already in storage area")
+                logger.debug(f"checking if already tracked")
                 try:
                     checksum = get_checksum(abspath)
                 except FileNotFoundError:
@@ -138,13 +141,12 @@ class Finder(object):
                         filter(self.File.checksum == checksum,
                                self.File.filename == filename).all()
                 except SQLAlchemyError as ex:
-                    logger.error(f"cannot check for duplicates: {ex}")
+                    logger.error(f"cannot check if tracked: {ex}")
                     logger.debug(f"terminating processing of '{abspath}'")
                     continue
                 if len(records) != 0:
                     dups = ", ".join(str(rec.id) for rec in records)
-                    logger.error(f"file '{abspath}' already in the "
-                                 f"storage area '{self.storage}: "
+                    logger.error(f"file '{abspath}' already tracked "
                                  f"(see row(s): {dups})")
                     action_type = "alt"
 
@@ -242,7 +244,7 @@ def scan(directory, blacklist=None, **kwargs):
     """
     if blacklist is None:
         blacklist = []
-    for dirpath, dirnames, filenames in os.walk(directory):
+    for dirpath, _, filenames in os.walk(directory):
         for fn in filenames:
             path = os.path.relpath(os.path.join(dirpath, fn), start=directory)
             if any(re.search(patt, path) for patt in blacklist):
@@ -250,7 +252,8 @@ def scan(directory, blacklist=None, **kwargs):
             yield path
 
 
-def parse_rsync_logs(directory, blacklist=None, isodate=None, timespan=1):
+def parse_rsync_logs(directory, blacklist=None,
+                     isodate=None, timespan=1, delay=60, extension="done"):
     """Generate the file names based on the content of the rsync logs.
 
     This is a specialized search method for finding files which where
@@ -267,8 +270,8 @@ def parse_rsync_logs(directory, blacklist=None, isodate=None, timespan=1):
     4. Log files contain file paths relative to the root of the storage area.
 
     After the function completed parsing a given logfile, it creates an
-    empty file ``<logfile>.done`` which act as a guard preventing it from
-    parsing it again.
+    empty file ``<logfile>.<extension>`` which act as a sentinel preventing it
+    from parsing the file again.
 
     Parameters
     ----------
@@ -278,15 +281,20 @@ def parse_rsync_logs(directory, blacklist=None, isodate=None, timespan=1):
         List of regular expressions file names should be match against. If a
         filename matches any of the patterns in the list, file will be ignored.
         By default, no file is ignored.
-    isodate : `datetime.date`
+    isodate : `datetime.date`, optional
         A date corresponding the directory which the function should
         monitor for new logs. If None (default), it will be set to the
         current date.
-    timespan : `int`
+    timespan : `int`, optional
         The number of previous days to add to the list of monitored
         directories. Defaults to 1 which means that the function will
         monitor log files in a subdirectory corresponding to whatever day
         the``isodate`` was set to and the day before (if it exists).
+    delay : `int`, optional
+        Time (in seconds) that need to pass from log's last modification before
+        it will be considered fully transferred. By default, it is 60 s.
+    extension : `str`, optional
+        An extension to use when creating a sentinel file. Defaults to "done".
 
     Returns
     -------
@@ -295,26 +303,61 @@ def parse_rsync_logs(directory, blacklist=None, isodate=None, timespan=1):
     """
     if blacklist is None:
         blacklist = []
-    end = datetime.date.today()
+    delay = timedelta(seconds=delay)
+    end = date.today()
     if isodate is not None:
         end = isodate
-    dates = [end - datetime.timedelta(days=n) for n in range(timespan+1)]
-    for date in dates:
-        top = os.path.join(directory, date.isoformat().replace("-", ""))
+    dates = [end - timedelta(days=n) for n in range(timespan+1)]
+    for day in dates:
+        top = os.path.join(directory, day.isoformat().replace("-", ""))
         if not os.path.exists(top):
             continue
-        for dirpath, dirnames, filenames in os.walk(top):
+        for dirpath, _, filenames in os.walk(top):
             manifests = [os.path.join(dirpath, fn) for fn in filenames
-                         if re.match(r"^rsync.*log$", fn)]
+                         if re.match(r"rsync.*log$", fn)]
             for manifest in manifests:
-                if os.path.exists(manifest + ".done"):
+                sentinel = ".".join([manifest, extension])
+
+                # Ignore a log file if it was modified withing a specified
+                # time span, i.e., assume that its transfer has not finished
+                # yet.
+                manifest_mtime = None
+                try:
+                    status = os.stat(manifest)
+                except FileNotFoundError:
+                    logger.error(f"{manifest}: file not found")
+                else:
+                    manifest_mtime = datetime.fromtimestamp(status.st_mtime)
+                now = datetime.now()
+                if manifest_mtime is None or now - manifest_mtime < delay:
                     continue
+
+                # Check if a log file was already parsed, i.e., a sentinel
+                # file exists. If it wasn't (no sentinel), do nothing; file
+                # hasn't been parsed yet. If it was parsed, check if by
+                # chance the log file hasn't been modified AFTER it was
+                # marked as parsed. It that's the case, remove the sentinel.
+                sentinel_mtime = None
+                try:
+                    status = os.stat(sentinel)
+                except FileNotFoundError:
+                    pass
+                else:
+                    sentinel_mtime = datetime.fromtimestamp(status.st_mtime)
+                if sentinel_mtime is not None:
+                    if sentinel_mtime < manifest_mtime:
+                        logger.error(f"{manifest} changed since marked as "
+                                     f"parsed, removing the sentinel")
+                        os.unlink(sentinel)
+                    else:
+                        continue
+
                 with open(manifest) as f:
                     for line in f:
                         if "<f+++++++++" not in line:
                             continue
-                        op, chng, loc, *rest = line.strip().split()
-                        if any(re.match(patt, loc) for patt in blacklist):
+                        _, _, path, *_ = line.strip().split()
+                        if any(re.search(patt, path) for patt in blacklist):
                             continue
-                        yield loc
-                os.mknod(manifest + ".done")
+                        yield path
+                os.mknod(sentinel)
