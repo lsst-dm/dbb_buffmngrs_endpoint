@@ -128,7 +128,7 @@ class Finder:
 
                 action_type = "std"
 
-                logger.debug(f"checking if not already in storage area")
+                logger.debug(f"checking if already tracked")
                 try:
                     checksum = get_checksum(abspath)
                 except FileNotFoundError:
@@ -141,13 +141,12 @@ class Finder:
                         filter(self.File.checksum == checksum,
                                self.File.filename == filename).all()
                 except SQLAlchemyError as ex:
-                    logger.error(f"cannot check for duplicates: {ex}")
+                    logger.error(f"cannot check if tracked: {ex}")
                     logger.debug(f"terminating processing of '{abspath}'")
                     continue
                 if len(records) != 0:
                     dups = ", ".join(str(rec.id) for rec in records)
-                    logger.error(f"file '{abspath}' already in the "
-                                 f"storage area '{self.storage}: "
+                    logger.error(f"file '{abspath}' already tracked "
                                  f"(see row(s): {dups})")
                     action_type = "alt"
 
