@@ -14,7 +14,8 @@ finder:
     method: scan
     blacklist: null
     date: null
-    timespan: 1
+    past_days: 1
+    future_days: 1
   pause: 1
 logging:
   file: null
