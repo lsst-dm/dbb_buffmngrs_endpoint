@@ -287,10 +287,10 @@ def parse_rsync_logs(directory, blacklist=None,
         List of regular expressions file names should be match against. If a
         filename matches any of the patterns in the list, file will be ignored.
         By default, no file is ignored.
-    isodate : `datetime.date`, optional
-        A date corresponding the directory which the function should
-        monitor for new logs. If None (default), it will be set to the
-        current date.
+    isodate : `str`, optional
+        String representing ISO date corresponding the directory which the
+        function should monitor for new logs. If None (default), it will be set
+        to the current date.
     past_days : `int`, optional
         The number of past days to add to the list of monitored directories.
         Defaults to 1.
@@ -313,10 +313,10 @@ def parse_rsync_logs(directory, blacklist=None,
     delay = timedelta(seconds=delay)
     origin = date.today()
     if isodate is not None:
-        origin = isodate
-    past = [origin - timedelta(days=n) for n in range(1, past_days+1)]
-    future = [origin + timedelta(days=n) for n in range(1, future_days+1)]
-    for day in sorted([*past, origin, *future]):
+        origin = date.fromisoformat(isodate)
+    start = origin - timedelta(days=past_days)
+    for offset in range(past_days + future_days + 1):
+        day = start + timedelta(days=offset)
         top = os.path.join(directory, day.isoformat().replace("-", ""))
         if not os.path.exists(top):
             continue
