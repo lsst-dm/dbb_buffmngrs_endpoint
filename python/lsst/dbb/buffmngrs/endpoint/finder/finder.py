@@ -274,10 +274,13 @@ def parse_rsync_logs(directory, blacklist=None,
     from parsing the file again.
 
     As the files from a single observation night can be placed in different
-    directories and these directories can be created in a time zone different
-    from the one the endpoint site operates in, be default the function
-    monitors also log files in directories corresponding to a day before and
-    a day after the current day (if any of them exists).
+    directories and these directories can be created in a time zone
+    different from the one the endpoint site operates in, be default the
+    function monitors also log files in directories corresponding to a day
+    before and a day after the current day (if any of them exists).  This
+    default settings determining which directories will be monitored can be
+    changed by adjusting ``past_days`` and ``future_days`` options (see
+    below).
 
     Parameters
     ----------
