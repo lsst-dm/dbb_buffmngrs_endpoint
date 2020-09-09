@@ -108,7 +108,8 @@ class Finder:
             raise ValueError(msg)
         self.search_opts = dict(blacklist=search.get("blacklist", None),
                                 isodate=search.get("date", None),
-                                timespan=search.get("timespan", 1),
+                                past_days=search.get("past_days", 1),
+                                future_days=search.get("future_days", 1),
                                 delay=search.get("delay", 60))
 
         # If we are monitoring rsync transfers, files are already in the
@@ -253,14 +254,13 @@ def scan(directory, blacklist=None, **kwargs):
 
 
 def parse_rsync_logs(directory, blacklist=None,
-                     isodate=None, timespan=1, delay=60, extension="done"):
+                     isodate=None, past_days=1, future_days=1,
+                     delay=60, extension="done"):
     """Generate the file names based on the content of the rsync logs.
 
     This is a specialized search method for finding files which where
     transferred to the storage area by ``rsync``. It identifies these
-    files by parsing log files created by it.
-
-    It assumes that:
+    files by parsing ``rsync``'s log files. It assumes that:
 
     1. The logs are stored in a centralized location.
     2. Logs from different days are kept in different subdirectories in that
@@ -273,6 +273,15 @@ def parse_rsync_logs(directory, blacklist=None,
     empty file ``<logfile>.<extension>`` which act as a sentinel preventing it
     from parsing the file again.
 
+    As the files from a single observation night can be placed in different
+    directories and these directories can be created in a time zone
+    different from the one the endpoint site operates in, be default the
+    function monitors also log files in directories corresponding to a day
+    before and a day after the current day (if any of them exists).  This
+    default settings determining which directories will be monitored can be
+    changed by adjusting ``past_days`` and ``future_days`` options (see
+    below).
+
     Parameters
     ----------
     directory : `str`
@@ -281,15 +290,16 @@ def parse_rsync_logs(directory, blacklist=None,
         List of regular expressions file names should be match against. If a
         filename matches any of the patterns in the list, file will be ignored.
         By default, no file is ignored.
-    isodate : `datetime.date`, optional
-        A date corresponding the directory which the function should
-        monitor for new logs. If None (default), it will be set to the
-        current date.
-    timespan : `int`, optional
-        The number of previous days to add to the list of monitored
-        directories. Defaults to 1 which means that the function will
-        monitor log files in a subdirectory corresponding to whatever day
-        the``isodate`` was set to and the day before (if it exists).
+    isodate : `str`, optional
+        String representing ISO date corresponding the directory which the
+        function should monitor for new logs. If None (default), it will be set
+        to the current date.
+    past_days : `int`, optional
+        The number of past days to add to the list of monitored directories.
+        Defaults to 1.
+    future_days : `int`, optional
+        The number of future days to add to the list of monitored directories.
+        Defaults to 1.
     delay : `int`, optional
         Time (in seconds) that need to pass from log's last modification before
         it will be considered fully transferred. By default, it is 60 s.
@@ -304,11 +314,12 @@ def parse_rsync_logs(directory, blacklist=None,
     if blacklist is None:
         blacklist = []
     delay = timedelta(seconds=delay)
-    end = date.today()
+    origin = date.today()
     if isodate is not None:
-        end = isodate
-    dates = [end - timedelta(days=n) for n in range(timespan+1)]
-    for day in dates:
+        origin = date.fromisoformat(isodate)
+    start = origin - timedelta(days=past_days)
+    for offset in range(past_days + future_days + 1):
+        day = start + timedelta(days=offset)
         top = os.path.join(directory, day.isoformat().replace("-", ""))
         if not os.path.exists(top):
             continue

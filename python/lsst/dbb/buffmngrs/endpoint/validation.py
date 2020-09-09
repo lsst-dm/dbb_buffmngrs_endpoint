@@ -64,6 +64,7 @@ properties:
                               enum:
                                 - Delete
                                 - Move
+                                - Noop
                             - type: "null"
                     alternative:
                         anyOf:
@@ -71,6 +72,7 @@ properties:
                               enum:
                                 - Delete
                                 - Move
+                                - Noop
                             - type: "null"
             search:
                 type: object
@@ -89,8 +91,15 @@ properties:
                     date:
                         anyOf:
                             - type: string
+                              format: date
                             - type: "null"
-                    timespan:
+                    past_days:
+                        type: integer
+                        minimum: 0
+                    future_days:
+                        type: integer
+                        minimum: 0
+                    delay:
                         type: integer
                         minimum: 0
                 required:
@@ -137,6 +146,22 @@ properties:
     ingester:
         type: object
         properties:
+            storage:
+                type: string
+            blacklist:
+                anyOf:
+                    - type: array
+                      items:
+                         type: string
+                      uniqueItems: true
+                    - type: "null"
+            whitelist:
+                anyOf:
+                    - type: array
+                      items:
+                         type: string
+                      uniqueItems: true
+                    - type: "null"
             plugin:
                 type: object
                 properties:
@@ -195,6 +220,7 @@ properties:
                 type: integer
                 minimum: 0
         required:
+            - storage
             - plugin
     logging:
         type: object
