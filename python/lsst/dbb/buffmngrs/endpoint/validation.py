@@ -182,6 +182,17 @@ properties:
                                             type: string
                                         mode:
                                             type: string
+                                            enum:
+                                                - copy
+                                                - link
+                                                - move
+                                                - skip
+                                        create:
+                                            type: boolean
+                                        dryrun:
+                                            type: boolean
+                                        ignoreIngested:
+                                            type: boolean
                                     required:
                                         - root
                     -
@@ -196,13 +207,28 @@ properties:
                                     properties:
                                         root:
                                             type: string
-                                        instrument:
+                                        config:
+                                            type: object
+                                        config_file:
+                                            type: string
+                                        ingest_task:
+                                            type: string
+                                        output_run:
                                             type: string
                                         transfer:
                                             type: string
+                                            enum:
+                                                - auto
+                                                - link
+                                                - symlink
+                                                - hardlink
+                                                - copy
+                                                - move
+                                                - relsymlink
+                                                - direct
                                     required:
                                         - root
-                                        - instrument
+                                        - output_run
                 required:
                     - name
                     - config
