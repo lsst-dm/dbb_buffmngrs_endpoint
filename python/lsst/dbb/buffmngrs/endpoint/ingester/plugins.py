@@ -238,7 +238,8 @@ class Gen3Ingest(Plugin):
             task.
         """
         try:
-            self.task.run([filename],
-                          run=self.config["output_run"], processes=1)
+            with lsst.log.UsePythonLogging():
+                self.task.run([filename],
+                              run=self.config["output_run"], processes=1)
         except Exception as ex:
             raise RuntimeError(ex)
