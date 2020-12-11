@@ -54,8 +54,11 @@ def file_creator(orms):
     `sqlalchemy.ext.declarative.api.DeclarativeMeta`
         A declarative (class), a Pythonic representation of database table.
     """
+    schema = orms["file"]["schema"]
+    tablename = orms["file"]["table"]
     attributes = {
-        "__tablename__": orms["file"],
+        "__tablename__": tablename,
+        "__table_args__": {"schema": schema},
         "id": Column(BigInteger, primary_key=True),
         "relpath": Column(String, nullable=False),
         "filename": Column(String, nullable=False, unique=True),
@@ -79,16 +82,19 @@ def event_creator(orms):
     `sqlalchemy.ext.declarative.api.DeclarativeMeta`
         A declarative (class), a Pythonic representation of database table.
     """
-    tablename = orms["event"]
+    schema = orms["event"]["schema"]
+    tablename = orms["event"]["table"]
+    file_fqn = ".".join([orms["file"]["schema"], orms["file"]["table"]])
     attributes = {
         "__tablename__": tablename,
+        "__table_args__": {"schema": schema},
         "ingest_ver": Column(String),
         "start_time": Column(DateTime, primary_key=True),
         "duration": Column(Interval),
         "err_message": Column(Text),
         "status": Column(Enum(Status,
                               values_callable=lambda x: [e.value for e in x])),
-        "files_id": Column(Integer, ForeignKey(f"{orms['file']}.id"),
+        "files_id": Column(Integer, ForeignKey(f"{file_fqn}.id"),
                            primary_key=True),
     }
     return type("Event", (Base,), attributes)

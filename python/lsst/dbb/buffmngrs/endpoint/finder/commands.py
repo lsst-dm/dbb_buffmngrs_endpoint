@@ -94,26 +94,38 @@ def start(filename, dump, validate):
     engine = create_engine(config["engine"],
                            echo=config.get("echo", False),
                            poolclass=class_)
+    insp = inspect(engine)
 
     logger.info("checking if required database table exists...")
-    required = set(config["tablenames"].values())
-    try:
-        available = set(inspect(engine).get_table_names())
-    except Exception as ex:
-        msg = f"{ex}"
-        logger.error(msg)
-        raise RuntimeError(msg)
-    else:
-        missing = required - available
-        if missing:
-            msg = f"table(s) {', '.join(missing)} not found in the database."
+    required = set()
+    for entry in config["tablenames"].values():
+        schema = entry.setdefault("schema", insp.default_schema_name)
+        table = entry["table"]
+        required.add((schema, table))
+    available = set()
+    for schema, _ in required:
+        try:
+            available.update((schema, table)
+                             for table in insp.get_table_names(schema=schema))
+        except Exception as ex:
+            msg = f"{ex}"
             logger.error(msg)
             raise RuntimeError(msg)
+    missing = required - available
+    if missing:
+        fqns = [".".join([s, t]) if s is not None else t for s, t in missing]
+        msg = f"table(s) {', '.join(fqns)} not found in the database."
+        logger.error(msg)
+        raise RuntimeError(msg)
+
+    # Save tablenames for future reference making sure the schema is always
+    # explicitly specified (needed to properly define ORMs later on).
+    tablenames = config["tablenames"]
+    for tablename in tablenames.values():
+        tablename.setdefault("schema", insp.default_schema_name)
 
     Session = sessionmaker(bind=engine)
     session = Session()
-
-    mapper = config["tablenames"]
 
     logger.info("setting up Finder...")
     config = configuration["finder"]
@@ -124,7 +136,7 @@ def start(filename, dump, validate):
     finder_config = dict(config)
 
     finder_config["session"] = session
-    finder_config["tablenames"] = mapper
+    finder_config["tablenames"] = tablenames
 
     # Set up standard and alternative file actions.
     package_name = "lsst.dbb.buffmngrs.endpoint.finder"

@@ -38,7 +38,12 @@ properties:
                 type: object
                 properties:
                     file:
-                        type: string
+                        type: object
+                        properties:
+                            schema: string
+                            table: string
+                        required:
+                            - table
                 required:
                     - file
             echo:
@@ -130,9 +135,19 @@ properties:
                 type: object
                 properties:
                     file:
-                        type: string
+                        type: object
+                        properties
+                            schema: string
+                            table: string
+                        required:
+                            - table
                     event:
-                        type: string
+                        type: object
+                        properties
+                            schema: string
+                            table: string
+                        required:
+                            - table
                 required:
                     - file
                     - event
