@@ -30,9 +30,9 @@ load initialize LSST environment and setup required packages:
    source ${LSSTSW}/loadLSST.bash
    setup lsst_distrib -t current
 
-.. PostgreSQL: https://www.postgresql.org/
-.. SQLAlchemy: https://www.sqlalchemy.org/
-.. SQLite: https://sqlite.org/index.html
+.. _PostgreSQL: https://www.postgresql.org/
+.. _SQLAlchemy: https://www.sqlalchemy.org/
+.. _SQLite: https://sqlite.org/index.html
 
 If you need to setup a specific version of the LSST stack, replace ``current``
 with a tag of your choice.
@@ -79,8 +79,8 @@ component that you may adapt to your local configuration:
    database:
      engine: "postgres://tester:password@localhost:5432/test"
      tablenames:
-       file: files
-       event: gen2_file_events
+       file:
+         table: files
    finder:
      source: /data/buffer
      storage: /data/storage
@@ -96,8 +96,21 @@ object relational mappings (ORMs).
 
 It tells the Finder to use `PostgreSQL`_ database ``test`` on ``localhost``
 which can be accessed be a user ``tester`` having password ``password``.  It
-also instructs the Finder which database tables to use to store the
-information, here ``files`` and ``gen2_file_evetns``.
+also instructs the Finder which database table to use to store the
+information about file, here ``files``.
+
+.. note::
+
+   If the table you want to use is not in the default database schema (as the
+   example above assumes), you need to specify the schema explicitly.  For
+   example, if the table ``files`` is located in the schema ``dbbbm``,  section
+   ``tablenames`` should be specified as:
+
+   .. code-block: yaml
+
+      tablenames:
+        schema: dbbbm
+        table: files
 
 The next section, ``finder``, defines mandatory settings for the Finder itself.
 
@@ -114,8 +127,10 @@ The Ingester configuration looks quite similar:
    database:
      engine: "postgres://tester:password@localhost:5432/test"
      tablenames:
-       file: files
-       event: gen2_file_events
+       file:
+         table: files
+       event:
+         table: gen2_file_events
    ingester:
      plugin:
        name: Gen2Ingest
@@ -133,12 +148,12 @@ you need to tell which plugin to use and provide settings a given plugin may
 need to access the data management system it supports.
 
 In the provided example the Ingester will be ingesting images to a Gen2 data
-repository located in ``/data/gen2repo`.
+repository located in ``/data/gen2repo``.
 
 .. note::
 
-   To see other supported configuration options, look at ``etc/finder.yml`` or
-   ``etc/ingester.yaml`` in the DBB endpoint buffer manager repository.
+   To see other supported configuration options, look at ``etc/finder.yaml`` or
+   ``etc/gen2ingester.yaml`` in the DBB endpoint buffer manager repository.
 
 Run DBB endpoint manager
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -165,8 +180,8 @@ your current directory, you can start both components with
    Alternatively, you may use a terminal multiplexer like `tmux`_ or `screen`_
    and start each component in a separate window.
 
-.. screen: https://www.gnu.org/software/screen
-.. tmux: https://github.com/tmux/tmux/wiki
+.. _screen: https://www.gnu.org/software/screen
+.. _tmux: https://github.com/tmux/tmux/wiki
 
 
 Stop DBB endpoint manager
@@ -189,13 +204,13 @@ them.
    If you have multiple DBB endpoint managers running on you system, find the
    process ids of the components of the specific endpoint manager with
 
-   .. code-block::
+   .. code-block:: bash
 
       ps aux | grep endmgr
 
    and terminate them selectively with
 
-   .. code-block::
+   .. code-block:: bash
 
       kill -15 FINDER_ID INGESTER_ID
 
@@ -234,7 +249,7 @@ to make another ingest attempt for selected files.
    ``*_file_events`` table with the filed ``status`` set to ``RERUN``. For
    example, when using PostgreSQL it can be done with:
 
-   .. code-block::
+   .. code-block:: SQL
 
       INSERT INTO gen2_file_events
       (start_time, status, files_id)
@@ -245,13 +260,15 @@ to make another ingest attempt for selected files.
 #. Start the Ingester in non-daemonic mode, telling it to look only for files
    with ``RERUN`` status (note two new lines at the end):
 
-   .. code-block::
+   .. code-block:: YAML
 
       database:
         engine: "postgres://tester:password@localhost:5432/test"
         tablenames:
-          file: files
-          event: gen2_file_events
+          file:
+            table: files
+          event:
+            table: gen2_file_events
         ingester:
           plugin:
             name: Gen2Ingest
