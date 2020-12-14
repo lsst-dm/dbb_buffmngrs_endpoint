@@ -23,7 +23,13 @@ import subprocess
 import yaml
 
 
-__all__ = ["dump_config", "dump_env", "setup_logging"]
+__all__ = (
+    "dump_config",
+    "dump_env",
+    "setup_logging",
+    "find_missing_tables",
+    "fully_qualify_tables",
+)
 
 
 def setup_logging(options=None):
@@ -92,3 +98,77 @@ def dump_env():
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              text=True)
     return process.stdout
+
+
+def find_missing_tables(inspector, specifications, skip_default=False):
+    """Determines which required tables are missing from the database.
+
+    Parameters
+    ----------
+    inspector : `sqlalchemy.engine.reflection.Inspector`
+        A proxy object allowing for database inspection.
+    specifications : `list` [ `dict` ]
+        A list of table specifications. Each specification must be a dictionary
+        of the form:
+
+            {
+                "schema": "<schema_name>",
+                "table": "<table_name>"
+            }
+
+        If a table resides in the default database schema, the ``"schema"``
+        field can be None or omitted.
+    skip_default : `bool`, optional
+        If set, the names of tables in the default database schema will not
+        be prefixed by it.
+
+    Returns
+    -------
+    `set`
+        A set with fully qualified names of tables which are missing.  If all
+        tables were found, an emtpy set is returned instead.
+    """
+    default_schema = inspector.default_schema_name
+    required = set()
+    for spec in specifications:
+        schema = spec.get("schema", default_schema)
+        table = spec["table"]
+        required.add((schema, table))
+    available = set()
+    for schema, _ in required:
+        available.update((schema, table)
+                         for table in inspector.get_table_names(schema=schema))
+    missing = required - available
+    return {t if skip_default and s == default_schema else ".".join([s, t])
+            for s, t in missing}
+
+
+def fully_qualify_tables(inspector, specifications):
+    """Add schema to each table specification, if missing.
+
+    Parameters
+    ----------
+    inspector : `sqlalchemy.engine.reflection.Inspector`
+        A proxy object allowing for database inspection.
+    specifications : `list` [ `dict` ]
+        A list of table specifications. Each specification must be a dictionary
+        of the form:
+
+            {
+                "schema": "<schema_name>",
+                "table": "<table_name>"
+            }
+
+        If a table resides in the default database schema, the ``"schema"``
+        field can be either None or omitted.
+
+    Returns
+    -------
+    `list`
+        A list of specification including the schema in which table resides.
+    """
+    default_schema = inspector.default_schema_name
+    for spec in specifications.values():
+        if spec.setdefault("schema", default_schema) is None:
+            spec["schema"] = default_schema
+    return specifications
