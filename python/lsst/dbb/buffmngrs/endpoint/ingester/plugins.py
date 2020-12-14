@@ -18,12 +18,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import importlib
 import logging
-import lsst.daf.butler as butler
+import sys
 import lsst.log
-import lsst.pipe.tasks.ingest as ingest
-import lsst.obs.base as base
+from lsst.daf.butler import Butler
+from lsst.pipe.base.configOverrides import ConfigOverrides
+from lsst.pipe.tasks.ingest import IngestTask
+from lsst.utils import doImport
 from ..abcs import Plugin
 
 
@@ -55,28 +56,43 @@ class Gen2Ingest(Plugin):
     Parameters
     ----------
     config : `dict`
-
+        Plugin configuration.
 
     Raises
     ------
     ValueError
-        If root directory of the Bulter repository is not provided.
+        If root directory of the Butler repository is not provided.
+
+    Notes
+    -----
+    See ``lsst.pipe.tasks.ingest`` for details.
     """
 
     def __init__(self, config):
+        # Set default values for configuration settings, but override
+        # them with the ones provided at runtime, if necessary.
+        self.config = {
+            "dryrun": False,
+            "mode": "link",
+            "create": False,
+            "ignoreIngested": False,
+        }
+        self.config.update(config)
+
         required = {"root"}
         missing = required - set(config)
         if missing:
             msg = f"Invalid configuration: {', '.join(missing)} not provided."
             logger.error(msg)
             raise ValueError(msg)
-        root = config["root"]
 
-        mode = config.get("mode", "link")
-        opts = dict(mode=mode)
+        # Initialize LSST ingest software.
         with lsst.log.UsePythonLogging():
-            self.task = ingest.IngestTask.prepareTask(root, **opts)
-        pkg = importlib.import_module(ingest.__package__)
+            self.task = IngestTask.prepareTask(**self.config)
+
+        # Retrieve the version of the LSST ingest software in use.
+        pkg_name = sys.modules[IngestTask.__module__].__package__
+        pkg = sys.modules[pkg_name]
         self._version = "N/A"
         try:
             self._version = getattr(pkg, "__version__")
@@ -127,62 +143,71 @@ class Gen2Ingest(Plugin):
 
 
 class Gen3Ingest(Plugin):
-    """Ingest a file to Gen2 Butler repository.
+    """Ingest a file to Gen3 Butler repository.
+
+    The LSST Gen3 Middleware supports parallel ingestion of multiple files.
+    However, it does not expose information which files were ingested
+    successfully and which failed to ingest.  Hence, the plugin is
+    deliberately restricted to ingesting one file at the time.  To enable
+    concurrent ingests, use Ingester's ``num_threads`` setting instead.
 
     Parameters
     ----------
     config : `dict`
-
+        Plugin configuration.
 
     Raises
     ------
     ValueError
-        If root directory of the Bulter repository is not provided.
+        If root directory of the Butler repository is not provided.
+
+    Notes
+    -----
+    The code below is essentially a customized version of
+    `script/ingestRaws.py`` from ``lsst.obs.base`` package.
     """
 
     def __init__(self, config):
-        required = {"root", "instrument"}
-        missing = required - set(config)
+        # Set default values for configuration settings, but override their
+        # them with the ones provided at runtime, if necessary.
+        #
+        # As parallel ingestion is disabled, ``processes`` setting will be
+        # ignored and is included only for sake of completeness.
+        self.config = {
+            "config": None,
+            "config_file": None,
+            "ingest_task": "lsst.obs.base.RawIngestTask",
+            "output_run": None,
+            "processes": 1,
+            "transfer": "symlink",
+        }
+        self.config.update(config)
+
+        required = {"root"}
+        missing = required - set(self.config)
         if missing:
             msg = f"invalid configuration: {', '.join(missing)} not provided"
             logger.error(msg)
             raise ValueError(msg)
-        root = config["root"]
 
-        name = config["instrument"]
-        try:
-            inst = base.utils.getInstrument(name)
-        except (RuntimeError, TypeError) as ex:
-            raise RuntimeError(ex)
-        else:
-            run = inst.makeDefaultRawIngestRunName()
+        # Initialize LSST ingest software.
+        butler = Butler(self.config["root"], writeable=True)
+        ingest_class = doImport(self.config["ingest_task"])
+        ingest_config = ingest_class.ConfigClass()
+        ingest_config.transfer = self.config["transfer"]
+        ingest_config_overrides = ConfigOverrides()
+        if self.config["config_file"] is not None:
+            ingest_config_overrides.addFileOverride(self.config["config_file"])
+        if self.config["config"] is not None:
+            for key, val in self.config["config"].items():
+                ingest_config_overrides.addValueOverride(key, val)
+        ingest_config_overrides.applyTo(ingest_config)
+        self.task = ingest_class(config=ingest_config, butler=butler)
 
-        # Create a Butler.
-        opts = dict(run=run, writeable=True)
-        btl = butler.Butler(root, **opts)
-
-        # Make an attempt to register an instrument with Butler. Quietly
-        # ignore the Butler throwing a fit as most likely it means the
-        # instrument is already registered.
-        #
-        # Note:
-        # We're casting a wide net here as the exception most likely will
-        # depend on the database back-end used by Butler. For example,
-        # for SQLite it look like:
-        #
-        #   sqlite3.IntegrityError: UNIQUE constraint failed: instrument.name
-        try:
-            inst.register(btl.registry)
-        except Exception as ex:
-            logger.debug(f"failed to register the instrument {name}: {ex}")
-            pass
-
-        cfg = base.RawIngestConfig()
-        cfg.transfer = config.get("transfer", "symlink")
-        self.task = base.RawIngestTask(config=cfg, butler=btl)
-
-        pkg = importlib.import_module(ingest.__package__)
+        # Retrieve the version of the LSST ingest software in use.
         self._version = "N/A"
+        pkg_name = ".".join(self.config["ingest_task"].split(".")[:-1])
+        pkg = sys.modules[pkg_name]
         try:
             self._version = getattr(pkg, "__version__")
         except AttributeError:
@@ -213,6 +238,8 @@ class Gen3Ingest(Plugin):
             task.
         """
         try:
-            self.task.run([filename])  # run() requires a list as an argument
+            with lsst.log.UsePythonLogging():
+                self.task.run([filename],
+                              run=self.config["output_run"], processes=1)
         except Exception as ex:
             raise RuntimeError(ex)

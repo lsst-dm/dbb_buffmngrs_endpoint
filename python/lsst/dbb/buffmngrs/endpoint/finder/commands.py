@@ -30,7 +30,13 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 from .finder import Finder
 from .. import validation
-from ..utils import dump_config, dump_env, setup_logging
+from ..utils import (
+    dump_config,
+    dump_env,
+    setup_logging,
+    find_missing_tables,
+    fully_qualify_tables,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -94,17 +100,21 @@ def start(filename, dump, validate):
     engine = create_engine(config["engine"],
                            echo=config.get("echo", False),
                            poolclass=class_)
+    insp = inspect(engine)
+
+    # Save tablenames for future reference making sure the schema is always
+    # explicitly specified (needed to properly define ORMs later on).
+    tablenames = fully_qualify_tables(insp, dict(config["tablenames"]))
 
     logger.info("checking if required database table exists...")
-    required = set(config["tablenames"].values())
     try:
-        available = set(inspect(engine).get_table_names())
+        missing = find_missing_tables(insp, list(tablenames.values()),
+                                      skip_default=True)
     except Exception as ex:
         msg = f"{ex}"
         logger.error(msg)
         raise RuntimeError(msg)
     else:
-        missing = required - available
         if missing:
             msg = f"table(s) {', '.join(missing)} not found in the database."
             logger.error(msg)
@@ -112,8 +122,6 @@ def start(filename, dump, validate):
 
     Session = sessionmaker(bind=engine)
     session = Session()
-
-    mapper = config["tablenames"]
 
     logger.info("setting up Finder...")
     config = configuration["finder"]
@@ -124,7 +132,7 @@ def start(filename, dump, validate):
     finder_config = dict(config)
 
     finder_config["session"] = session
-    finder_config["tablenames"] = mapper
+    finder_config["tablenames"] = tablenames
 
     # Set up standard and alternative file actions.
     package_name = "lsst.dbb.buffmngrs.endpoint.finder"

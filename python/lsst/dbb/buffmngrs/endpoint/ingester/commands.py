@@ -28,7 +28,13 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 from .ingester import Ingester
 from .. import validation
-from ..utils import dump_config, dump_env, setup_logging
+from ..utils import (
+    dump_config,
+    dump_env,
+    setup_logging,
+    find_missing_tables,
+    fully_qualify_tables,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -86,26 +92,28 @@ def start(filename, dump, validate):
     engine = create_engine(config["engine"],
                            echo=config.get("echo", False),
                            poolclass=class_)
+    insp = inspect(engine)
+
+    # Save tablenames for future reference making sure the schema is always
+    # explicitly specified (needed to properly define ORMs later on).
+    tablenames = fully_qualify_tables(insp, dict(config["tablenames"]))
 
     logger.info("checking if required database tables exist...")
-    required = {table for table in config["tablenames"].values()}
     try:
-        available = set(inspect(engine).get_table_names())
+        missing = find_missing_tables(insp, list(tablenames.values()),
+                                      skip_default=True)
     except Exception as ex:
         msg = f"{ex}"
         logger.error(msg)
         raise RuntimeError(msg)
     else:
-        missing = required - available
         if missing:
-            msg = f"table(s) {', '.join(missing)} not found in the database"
+            msg = f"table(s) {', '.join(missing)} not found in the database."
             logger.error(msg)
             raise RuntimeError(msg)
 
     Session = sessionmaker(bind=engine)
     session = Session()
-
-    mapper = config["tablenames"]
 
     logger.info("setting up Ingester...")
     config = configuration["ingester"]
@@ -114,9 +122,8 @@ def start(filename, dump, validate):
     # settings from relevant section of the global configuration, but new
     # settings may be added, already existing ones may be altered.
     ingester_config = dict(config)
-
     ingester_config["session"] = session
-    ingester_config["tablenames"] = mapper
+    ingester_config["tablenames"] = tablenames
 
     # Configure ingest plugin.
     package_name = "lsst.dbb.buffmngrs.endpoint.ingester"

@@ -1,6 +1,7 @@
 database:
   engine: "postgres://tester:password@localhost:5432/test"
   tablenames:
+    schema: null
     file: loc_inst_files
   echo: false
   pool_class: QueuePool

@@ -10,4 +10,4 @@ import lsst.dbb.buffmngrs.endpoint
 _g = globals()
 _g.update(build_package_configs(
     project_name='dbb_buffmngrs_endpoint',
-    version=lsst.ctrl.oods.version.__version__))
+    version=lsst.dbb.buffmngrs.endpoint.version.__version__))
