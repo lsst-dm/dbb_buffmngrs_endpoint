@@ -20,7 +20,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Component responsible for file discovery.
 """
-import hashlib
 import logging
 import os
 import re
@@ -29,6 +28,7 @@ import time
 from datetime import date, datetime, timedelta
 from sqlalchemy.exc import SQLAlchemyError
 from ..declaratives import file_creator
+from ..utils import get_checksum
 
 
 __all__ = ["Finder"]
@@ -186,41 +186,6 @@ class Finder:
 
             logger.debug(f"no new files, next check in {self.pause} sec.")
             time.sleep(self.pause)
-
-
-def get_checksum(path, method='blake2', block_size=4096):
-    """Calculate checksum for a file using BLAKE2 cryptographic hash function.
-
-    Parameters
-    ----------
-    path : `str`
-        Path to the file.
-    method : `str`
-        An algorithm to use for calculating file's hash. Supported algorithms
-        include:
-        * _blake2_: BLAKE2 cryptographic hash,
-        * _md5_: traditional MD5 algorithm,
-        * _sha1_: SHA-1 cryptographic hash.
-        By default or if unsupported method is provided, BLAKE2 algorithm wil
-        be used.
-    block_size : `int`, optional
-        Size of the block
-
-    Returns
-    -------
-    `str`
-        File's hash calculated using a given method.
-    """
-    methods = {
-        'blake2': hashlib.blake2b,
-        'md5': hashlib.md5,
-        'sha1': hashlib.sha1,
-    }
-    hasher = methods.get(method, hashlib.blake2b)()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(block_size), b""):
-            hasher.update(chunk)
-    return hasher.hexdigest()
 
 
 def scan(directory, blacklist=None, **kwargs):

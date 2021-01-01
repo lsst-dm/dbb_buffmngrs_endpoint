@@ -18,6 +18,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import hashlib
 import logging
 import subprocess
 import yaml
@@ -29,6 +30,7 @@ __all__ = (
     "setup_logging",
     "find_missing_tables",
     "fully_qualify_tables",
+    "get_checksum",
 )
 
 
@@ -164,11 +166,47 @@ def fully_qualify_tables(inspector, specifications):
 
     Returns
     -------
-    `list`
-        A list of specification including the schema in which table resides.
+    `dict` [ `str`, `dict` ]
+        The mapping of between ORMs and table specifications including
+        the schema in which table resides.
     """
     default_schema = inspector.default_schema_name
     for spec in specifications.values():
         if spec.setdefault("schema", default_schema) is None:
             spec["schema"] = default_schema
     return specifications
+
+
+def get_checksum(path, method='blake2', block_size=4096):
+    """Calculate checksum for a file using BLAKE2 cryptographic hash function.
+
+    Parameters
+    ----------
+    path : `str`
+        Path to the file.
+    method : `str`
+        An algorithm to use for calculating file's hash. Supported algorithms
+        include:
+        * _blake2_: BLAKE2 cryptographic hash,
+        * _md5_: traditional MD5 algorithm,
+        * _sha1_: SHA-1 cryptographic hash.
+        By default or if unsupported method is provided, BLAKE2 algorithm wil
+        be used.
+    block_size : `int`, optional
+        Size of the block
+
+    Returns
+    -------
+    `str`
+        File's hash calculated using a given method.
+    """
+    methods = {
+        'blake2': hashlib.blake2b,
+        'md5': hashlib.md5,
+        'sha1': hashlib.sha1,
+    }
+    hasher = methods.get(method, hashlib.blake2b)()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(block_size), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
