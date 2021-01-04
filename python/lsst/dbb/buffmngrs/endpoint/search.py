@@ -75,6 +75,8 @@ def scan(directory, blacklist=None, **kwargs):
         List of regular expressions file names should be match against. If a
         filename matches any of the patterns in the list, file will be ignored.
         By default, no file is ignored.
+    **kwargs
+        Additional keyword arguments.
 
     Yields
     ------

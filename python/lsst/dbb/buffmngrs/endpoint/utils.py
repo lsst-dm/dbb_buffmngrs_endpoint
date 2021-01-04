@@ -152,9 +152,10 @@ def fully_qualify_tables(inspector, specifications):
     ----------
     inspector : `sqlalchemy.engine.reflection.Inspector`
         A proxy object allowing for database inspection.
-    specifications : `list` [ `dict` ]
-        A list of table specifications. Each specification must be a dictionary
-        of the form:
+    specifications : `dict` [ `str', `dict` ]
+        A mapping between object relational mappers (ORMs) and corresponding
+        table specifications. Each specification must be a dictionary of
+        the form:
 
             {
                 "schema": "<schema_name>",

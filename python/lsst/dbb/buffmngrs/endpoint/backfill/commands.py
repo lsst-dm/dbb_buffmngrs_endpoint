@@ -57,7 +57,7 @@ def backfill():
               help="Validate configuration before starting the service.")
 @click.argument("filename", type=click.Path(exists=True))
 def start(filename, dump, validate):
-    """Starts a finder using a configuration from FILENAME.
+    """Starts a backfill using a configuration from FILENAME.
     """
     with open(filename) as f:
         configuration = yaml.safe_load(f)

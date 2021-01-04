@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 @click.group()
 def finder():
-    """A group that all commands controlling Finder are attached to.
+    """Manage file discovery at a specified location.
     """
     pass
 

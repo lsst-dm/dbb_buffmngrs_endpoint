@@ -42,6 +42,8 @@ logger = logging.getLogger(__name__)
 
 @click.group()
 def ingester():
+    """Manage file ingestion to a data management system.
+    """
     pass
 
 
