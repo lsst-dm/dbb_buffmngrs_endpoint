@@ -26,11 +26,7 @@ import re
 from datetime import date, datetime, timedelta
 
 
-__all__ = (
-    "parse_rsync_logs",
-    "scan",
-    "search_methods",
-)
+__all__ = ["parse_rsync_logs", "scan", "search_methods"]
 
 
 logger = logging.getLogger(__name__)

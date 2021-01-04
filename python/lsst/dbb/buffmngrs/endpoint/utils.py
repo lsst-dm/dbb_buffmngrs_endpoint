@@ -24,14 +24,14 @@ import subprocess
 import yaml
 
 
-__all__ = (
+__all__ = [
     "dump_config",
     "dump_env",
     "setup_logging",
     "find_missing_tables",
     "fully_qualify_tables",
     "get_checksum",
-)
+]
 
 
 def setup_logging(options=None):
