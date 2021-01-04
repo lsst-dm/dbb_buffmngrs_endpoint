@@ -22,12 +22,10 @@
 """
 import logging
 import os
-import re
-import sys
 import time
-from datetime import date, datetime, timedelta
 from sqlalchemy.exc import SQLAlchemyError
 from ..declaratives import file_creator
+from ..search import search_methods
 from ..utils import get_checksum
 
 
@@ -99,11 +97,11 @@ class Finder:
 
         # Configure method responsible for file discovery.
         search = config["search"]
-        method = search["method"]
+        method_name = search["method"]
         try:
-            self.search = getattr(sys.modules[__name__], method)
-        except AttributeError:
-            msg = f"unknown search method: '{method}'"
+            self.search = search_methods[method_name]
+        except KeyError:
+            msg = f"unknown search method: '{method_name}'"
             logger.error(msg)
             raise ValueError(msg)
         self.search_opts = dict(blacklist=search.get("blacklist", None),
@@ -114,7 +112,7 @@ class Finder:
 
         # If we are monitoring rsync transfers, files are already in the
         # storage area. Otherwise they are still in the buffer.
-        self.location = self.storage if "parse" in method else self.source
+        self.location = self.storage if "parse" in method_name else self.source
 
         # Initialize various optional settings.
         self.pause = config.get("pause", 1)
@@ -186,154 +184,3 @@ class Finder:
 
             logger.debug(f"no new files, next check in {self.pause} sec.")
             time.sleep(self.pause)
-
-
-def scan(directory, blacklist=None, **kwargs):
-    """Generate the file names in a directory tree.
-
-    Generates the file paths in a given directory tree excluding those files
-    that were blacklisted.
-
-    Parameters
-    ----------
-    directory : `str`
-        The root of the directory tree which need to be searched.
-    blacklist : `list` of `str`, optional
-        List of regular expressions file names should be match against. If a
-        filename matches any of the patterns in the list, file will be ignored.
-        By default, no file is ignored.
-
-    Returns
-    -------
-    generator object
-        An iterator over file paths relative to the ``directory``.
-    """
-    if blacklist is None:
-        blacklist = []
-    for dirpath, _, filenames in os.walk(directory):
-        for fn in filenames:
-            path = os.path.relpath(os.path.join(dirpath, fn), start=directory)
-            if any(re.search(patt, path) for patt in blacklist):
-                continue
-            yield path
-
-
-def parse_rsync_logs(directory, blacklist=None,
-                     isodate=None, past_days=1, future_days=1,
-                     delay=60, extension="done"):
-    """Generate the file names based on the content of the rsync logs.
-
-    This is a specialized search method for finding files which where
-    transferred to the storage area by ``rsync``. It identifies these
-    files by parsing ``rsync``'s log files. It assumes that:
-
-    1. The logs are stored in a centralized location.
-    2. Logs from different days are kept in different subdirectories in that
-       location.
-    3. The name of each subdirectory represents the date when
-       files where transferred and that date is expressed as ``YYYYMMDD``.
-    4. Log files contain file paths relative to the root of the storage area.
-
-    After the function completed parsing a given logfile, it creates an
-    empty file ``<logfile>.<extension>`` which act as a sentinel preventing it
-    from parsing the file again.
-
-    As the files from a single observation night can be placed in different
-    directories and these directories can be created in a time zone
-    different from the one the endpoint site operates in, be default the
-    function monitors also log files in directories corresponding to a day
-    before and a day after the current day (if any of them exists).  This
-    default settings determining which directories will be monitored can be
-    changed by adjusting ``past_days`` and ``future_days`` options (see
-    below).
-
-    Parameters
-    ----------
-    directory : `str`
-        The directory where the all log files reside.
-    blacklist : `list` of `str`, optional
-        List of regular expressions file names should be match against. If a
-        filename matches any of the patterns in the list, file will be ignored.
-        By default, no file is ignored.
-    isodate : `str`, optional
-        String representing ISO date corresponding the directory which the
-        function should monitor for new logs. If None (default), it will be set
-        to the current date.
-    past_days : `int`, optional
-        The number of past days to add to the list of monitored directories.
-        Defaults to 1.
-    future_days : `int`, optional
-        The number of future days to add to the list of monitored directories.
-        Defaults to 1.
-    delay : `int`, optional
-        Time (in seconds) that need to pass from log's last modification before
-        it will be considered fully transferred. By default, it is 60 s.
-    extension : `str`, optional
-        An extension to use when creating a sentinel file. Defaults to "done".
-
-    Returns
-    -------
-    generator object
-        An iterator over file paths extracted from the log files.
-    """
-    if blacklist is None:
-        blacklist = []
-    delay = timedelta(seconds=delay)
-    origin = date.today()
-    if isodate is not None:
-        origin = date.fromisoformat(isodate)
-    start = origin - timedelta(days=past_days)
-    for offset in range(past_days + future_days + 1):
-        day = start + timedelta(days=offset)
-        top = os.path.join(directory, day.isoformat().replace("-", ""))
-        if not os.path.exists(top):
-            continue
-        for dirpath, _, filenames in os.walk(top):
-            manifests = [os.path.join(dirpath, fn) for fn in filenames
-                         if re.match(r"rsync.*log$", fn)]
-            for manifest in manifests:
-                sentinel = ".".join([manifest, extension])
-
-                # Ignore a log file if it was modified withing a specified
-                # time span, i.e., assume that its transfer has not finished
-                # yet.
-                manifest_mtime = None
-                try:
-                    status = os.stat(manifest)
-                except FileNotFoundError:
-                    logger.error(f"{manifest}: file not found")
-                else:
-                    manifest_mtime = datetime.fromtimestamp(status.st_mtime)
-                now = datetime.now()
-                if manifest_mtime is None or now - manifest_mtime < delay:
-                    continue
-
-                # Check if a log file was already parsed, i.e., a sentinel
-                # file exists. If it wasn't (no sentinel), do nothing; file
-                # hasn't been parsed yet. If it was parsed, check if by
-                # chance the log file hasn't been modified AFTER it was
-                # marked as parsed. It that's the case, remove the sentinel.
-                sentinel_mtime = None
-                try:
-                    status = os.stat(sentinel)
-                except FileNotFoundError:
-                    pass
-                else:
-                    sentinel_mtime = datetime.fromtimestamp(status.st_mtime)
-                if sentinel_mtime is not None:
-                    if sentinel_mtime < manifest_mtime:
-                        logger.error(f"{manifest} changed since marked as "
-                                     f"parsed, removing the sentinel")
-                        os.unlink(sentinel)
-                    else:
-                        continue
-
-                with open(manifest) as f:
-                    for line in f:
-                        if "<f+++++++++" not in line:
-                            continue
-                        _, _, path, *_ = line.strip().split()
-                        if any(re.search(patt, path) for patt in blacklist):
-                            continue
-                        yield path
-                os.mknod(sentinel)
