@@ -140,5 +140,5 @@ def start(filename, dump, validate):
     ingester_config["plugin"]["class"] = class_
 
     logger.info("starting Ingester...")
-    ingester = Ingester(ingester_config)
-    ingester.run()
+    component = Ingester(ingester_config)
+    component.run()
