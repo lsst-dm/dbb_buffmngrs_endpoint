@@ -143,7 +143,7 @@ section of Finder's configuration.
 Similarly to the Finder, the section ``ingester`` defines mandatory setting for
 this component.
 
-The Ingester uses plugins to ingest images to diffrent database systems. Hence
+The Ingester uses plugins to ingest images to different database systems. Hence
 you need to tell which plugin to use and provide settings a given plugin may
 need to access the data management system it supports.
 
@@ -162,9 +162,9 @@ You need to start each component of the endpoint manager separately.
 
 .. note::
 
-   While it may look like an uncessary burden, it gives you a great flexibility
-   in creating a DBB endpoint buffer manager and also ensures that potential
-   catastrophic failuers of one component won't affect the others.
+   While it may look like an unnecessary burden, it gives you a great
+   flexibility in creating a DBB endpoint buffer manager and also ensures that
+   potential catastrophic failures of one component won't affect the others.
 
 Assuming that the configuration files for the Finder and the Ingester
 (``finder.yaml`` and ``ingester.yaml`` respectively) are in
@@ -240,8 +240,8 @@ Each event has a status assigned to it.  Possible event statuses are:
    always look at the most recent event for a given file to determine its
    current status.
 
-There is one more special status, RERUN, which you can use to tell the Ingester
-to make another ingest attempt for selected files.
+There are two more special statuses: RERUN and BACKFILL.  You can use RERUN to
+tell the Ingester to make another ingest attempt for selected files.  To do so:
 
 #. Stop the Ingester (if it's running).
 
@@ -279,3 +279,70 @@ to make another ingest attempt for selected files.
 
 When run in non-daemonic mode, the Ingester will quit after processing all the
 files with ``RERUN`` status.
+
+Backfill database records
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In case where some files were already present in the storage area and ingested
+to a Butler dataset repository before the deployment of the DBB endpoint buffer
+manager.  
+
+Use ``backfill`` command to populate the endpoint manager's database tables with
+entries regarding these files.
+
+For example, to create entries for all files in ``/data/storage/2020-12-31``
+directory:
+
+#. Create a backfill tool configuration file ``backfill.yaml``:
+
+   .. code-block:: YAML
+
+      database:
+        engine: "postgres://tester:password@localhost:5432/test"
+        tablenames:
+          file:
+            table: files
+          event:
+            table: gen2_file_events
+      backfill:
+        storage: /data/storage
+        sources:
+          - "2020-12-31"
+        search:
+          blacklist:
+            - \.txt$
+
+   .. note::
+
+      You can specify multiple sources.  The source entry can be either a file
+      or a directory.  You can use unix style pathname pattern expansion
+      when specifying source's name (tilde expansion is not supported though).
+      All sources must be relative with regard to the storage area.
+
+   .. note::
+
+      To prevent Python YAML parser from accidental conversion of strings like
+      ``2021-01-01`` into a ``datetime`` objects, enclose them in quotes.
+
+#. Start the backfill tool with
+
+   .. code-block:: bash
+
+      endmgr backfill start backfill.yaml
+
+The backfill tool will scan the specified directory (and its subdirectories)
+for existing files and created appropriate entries in ``files`` and
+``file_events`` tables.
+
+The statuses of all entries added by the tool to the ``file_events`` table will
+be set to BACKFILL.
+
+The backfill tool will exit when it processes all the files in the provided
+source directory (or directories).
+
+
+.. warning::
+
+   The backfill tool does not verify if any of the files found in the source
+   directory is indeed ingested to the Butler repository.
+
