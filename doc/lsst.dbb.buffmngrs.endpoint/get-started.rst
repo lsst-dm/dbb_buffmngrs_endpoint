@@ -269,13 +269,13 @@ tell the Ingester to make another ingest attempt for selected files.  To do so:
             table: files
           event:
             table: gen2_file_events
-        ingester:
-          plugin:
-            name: Gen2Ingest
-            config:
-              root: /data/gen2repo
-          daemon: false
-          file_status: RERUN
+      ingester:
+        plugin:
+          name: Gen2Ingest
+          config:
+            root: /data/gen2repo
+        daemon: false
+        file_status: RERUN
 
 When run in non-daemonic mode, the Ingester will quit after processing all the
 files with ``RERUN`` status.
