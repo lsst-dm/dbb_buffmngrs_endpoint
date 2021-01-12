@@ -137,31 +137,30 @@ class Backfill(object):
                 logger.debug(f"updating database entries")
 
                 # Add file record (starts the transaction).
-                entry = self.File(
+                file = self.File(
                     relpath=dirname,
                     filename=filename,
                     checksum=checksum,
                 )
-                self.session.add(entry)
+                self.session.add(file)
 
-                # Query the database to find out the id which was assigned
-                # to that record.
+                # Flush the changes to get the id for that record (does NOT
+                # end the transaction).
                 try:
-                    (id_,) = self.session.query(self.File.id). \
-                        filter(self.File.checksum == checksum)
+                    self.session.flush()
                 except SQLAlchemyError as ex:
                     self.session.rollback()
-                    logger.error(f"{relpath}: cannot query the database: {ex}")
+                    logger.error(f"{relpath}: cannot create file entry: {ex}")
                     logger.debug(f"{relpath}: terminating processing")
                     continue
 
                 # Add the corresponding event record.
-                entry = self.Event(
+                event = self.Event(
                     status=Status.BACKFILL.value,
                     start_time=datetime.datetime.now(),
-                    files_id=id_,
+                    files_id=file.id,
                 )
-                self.session.add(entry)
+                self.session.add(event)
 
                 # Finally, commit the changes or roll the changes back if
                 # any errors were encountered (ends the transaction).
