@@ -22,7 +22,7 @@
 """
 
 
-__all__ = ["finder", "ingester"]
+__all__ = ["backfill", "finder", "ingester"]
 
 
 finder = """
@@ -285,4 +285,94 @@ properties:
 required:
     - database
     - ingester
+"""
+
+backfill = """
+---
+type: object
+properties:
+    database:
+        type: object
+        properties:
+            engine:
+                type: string
+            tablenames:
+                type: object
+                properties:
+                    file:
+                        type: object
+                        properties:
+                            schema:
+                                anyOf:
+                                    - type: string
+                                    - type: "null"
+                            table:
+                                type: string
+                        required:
+                            - table
+                    event:
+                        type: object
+                        properties:
+                            schema:
+                                anyOf:
+                                    - type: string
+                                    - type: "null"
+                            table:
+                                type: string
+                        required:
+                            - table
+                required:
+                    - file
+                    - event
+            echo:
+                type: boolean
+            pool_class:
+                type: string
+        required:
+            - engine
+            - tablenames
+    backfill:
+        type: object
+        properties:
+            storage:
+                type: string
+            sources:
+                type: array
+                items:
+                    type: string
+            search:
+                type: object
+                properties:
+                    blacklist:
+                        anyOf:
+                            - type: array
+                              items:
+                                 type: string
+                              uniqueItems: true
+                            - type: "null"
+        required:
+            - storage
+            - sources
+    logging:
+        type: object
+        properties:
+            file:
+                anyOf:
+                    - type: string
+                    - type: "null"
+            format:
+                anyOf:
+                    - type: string
+                    - type: "null"
+            level:
+                type: string
+                enum:
+                    - DEBUG
+                    - INFO
+                    - WARNING
+                    - ERROR
+                    - CRITICAL
+required:
+    - database
+    - backfill
 """
