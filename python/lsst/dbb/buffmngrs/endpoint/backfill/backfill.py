@@ -95,10 +95,13 @@ class Backfill(object):
     def run(self):
         """Start the backfill process.
         """
+        acc = dict(failure=0, success=0)
         sources = [glob(os.path.join(self.storage, s)) for s in self.sources]
         for source in chain(*sources):
+            logger.debug(f"{source}: setting as file source")
             if not os.path.exists(source):
                 logger.warning(f"{source}: no such file or directory")
+                acc["failure"] += 1
                 continue
 
             paths = scan(source, **self.search_opts) if os.path.isdir(source) \
@@ -117,10 +120,12 @@ class Backfill(object):
                 except SQLAlchemyError as ex:
                     logger.error(f"{relpath}: cannot check if tracked: {ex}")
                     logger.debug(f"{relpath}: terminating processing")
+                    acc["failure"] += 1
                     continue
                 if record is not None:
                     logger.warning(f"file already tracked (id: {record.id})")
                     logger.debug(f"{relpath}: terminating processing")
+                    acc["failure"] += 1
                     continue
 
                 logger.debug(f"calculating checksum")
@@ -129,6 +134,7 @@ class Backfill(object):
                 except FileNotFoundError:
                     logger.error(f"{relpath}: no such file")
                     logger.debug(f"{relpath}: terminating processing")
+                    acc["failure"] += 1
                     continue
 
                 # Always make BOTH inserts in a single transaction!
@@ -152,6 +158,7 @@ class Backfill(object):
                     self.session.rollback()
                     logger.error(f"{relpath}: cannot create file entry: {ex}")
                     logger.debug(f"{relpath}: terminating processing")
+                    acc["failure"] += 1
                     continue
 
                 # Add the corresponding event record.
@@ -168,7 +175,16 @@ class Backfill(object):
                     self.session.commit()
                 except Exception as ex:
                     self.session.rollback()
-                    logger.error(f"{relpath}: creating database entries "
-                                 f"failed: {ex}")
+                    logger.error(f"{relpath}: cannot create database entries: "
+                                 f"{ex}")
+                    acc["failure"] += 1
                 else:
                     logger.debug(f"{relpath}: processing completed")
+                    acc["success"] += 1
+        total = sum(x for x in acc.values())
+        if total == 0:
+            logger.warning("no backfill attempts were made")
+        if acc["failure"] != 0:
+            logger.warning("some backfill attempts failed")
+        else:
+            logger.info("all found files were backfilled successfully")
