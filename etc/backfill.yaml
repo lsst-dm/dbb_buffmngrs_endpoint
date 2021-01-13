@@ -3,7 +3,7 @@ database:
   tablenames:
     file:
       schema: null
-      tablename: loc_inst_files
+      table: loc_inst_files
     event:
       schema: null
       table: loc_inst_gen2_file_events

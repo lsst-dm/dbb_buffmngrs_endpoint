@@ -10,6 +10,7 @@ database:
   echo: false
   pool_class: QueuePool
 ingester:
+  storage: /data/storage
   plugin:
     name: Gen2Ingest
 

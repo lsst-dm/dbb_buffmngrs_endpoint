@@ -40,8 +40,12 @@ properties:
                     file:
                         type: object
                         properties:
-                            schema: string
-                            table: string
+                            schema:
+                                anyOf:
+                                    - type: string
+                                    - type: "null"
+                            table:
+                                type: string
                         required:
                             - table
                 required:
@@ -136,16 +140,24 @@ properties:
                 properties:
                     file:
                         type: object
-                        properties
-                            schema: string
-                            table: string
+                        properties:
+                            schema:
+                                anyOf:
+                                    - type: string
+                                    - type: "null"
+                            table:
+                                type: string
                         required:
                             - table
                     event:
                         type: object
-                        properties
-                            schema: string
-                            table: string
+                        properties:
+                            schema:
+                                anyOf:
+                                    - type: string
+                                    - type: "null"
+                            table:
+                                type: string
                         required:
                             - table
                 required:
@@ -163,20 +175,6 @@ properties:
         properties:
             storage:
                 type: string
-            blacklist:
-                anyOf:
-                    - type: array
-                      items:
-                         type: string
-                      uniqueItems: true
-                    - type: "null"
-            whitelist:
-                anyOf:
-                    - type: array
-                      items:
-                         type: string
-                      uniqueItems: true
-                    - type: "null"
             plugin:
                 type: object
                 properties:
@@ -223,13 +221,19 @@ properties:
                                         root:
                                             type: string
                                         config:
-                                            type: object
+                                            anyOf:
+                                                - type: object
+                                                - type: "null"
                                         config_file:
-                                            type: string
+                                            anyOf:
+                                                - type: object
+                                                - type: "null"
                                         ingest_task:
                                             type: string
                                         output_run:
-                                            type: string
+                                            anyOf:
+                                                - type: object
+                                                - type: "null"
                                         transfer:
                                             type: string
                                             enum:
@@ -243,7 +247,6 @@ properties:
                                                 - direct
                                     required:
                                         - root
-                                        - output_run
                 required:
                     - name
                     - config

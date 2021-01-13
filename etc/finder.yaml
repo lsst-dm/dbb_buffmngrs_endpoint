@@ -3,7 +3,7 @@ database:
   tablenames:
     file:
       schema: null
-      file: loc_inst_files
+      table: loc_inst_files
   echo: false
   pool_class: QueuePool
 finder:
