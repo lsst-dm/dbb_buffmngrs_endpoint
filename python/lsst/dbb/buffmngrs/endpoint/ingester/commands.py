@@ -18,11 +18,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import click
 import importlib
 import inspect
 import jsonschema
 import logging
+import click
 import yaml
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker

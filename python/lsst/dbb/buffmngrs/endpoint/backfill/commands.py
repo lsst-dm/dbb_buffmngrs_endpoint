@@ -20,11 +20,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Command line interface for the Backfill component.
 """
-import click
 import importlib
 import inspect
 import jsonschema
 import logging
+import click
 import yaml
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
