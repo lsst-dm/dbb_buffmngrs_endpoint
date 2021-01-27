@@ -30,6 +30,12 @@ from .ingester import Ingester
 from .. import validation
 from ..utils import dump_config, dump_env, setup_logging
 
+MONITOR = 1
+
+if MONITOR:
+    from ..DbbMonitor import DbbMonitor
+    DbbM = DbbMonitor()
+    import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -132,4 +138,20 @@ def start(filename, dump, validate):
 
     logger.info("starting Ingester...")
     ingester = Ingester(ingester_config)
+
+    if MONITOR:
+        mon_start = datetime.datetime.utcnow()
+
     ingester.run()
+
+    if MONITOR:
+        mon_end = datetime.datetime.utcnow()
+        mon_tags = {
+            "ingesterTimeTag": mon_start
+        }
+        mon_fields = {
+            "ingesterStart": mon_start,
+            "ingesterEnd": mon_end,
+            "ingesterDuration": mon_end-mon_start
+        }
+        DbbM.report_point("ingesterElapsed", mon_tags, mon_fields)

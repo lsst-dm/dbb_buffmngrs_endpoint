@@ -1,0 +1,5 @@
+monitoring:
+  host: "141.142.181.241"
+  port: 8086
+  username: "telegraf"
+  password: "Happy@123"

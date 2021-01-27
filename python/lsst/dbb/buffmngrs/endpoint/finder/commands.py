@@ -32,6 +32,12 @@ from .finder import Finder
 from .. import validation
 from ..utils import dump_config, dump_env, setup_logging
 
+MONITOR = 1
+
+if MONITOR:
+    from ..DbbMonitor import DbbMonitor
+    DbbM = DbbMonitor()
+    import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -152,4 +158,19 @@ def start(filename, dump, validate):
 
     logger.info("starting Finder...")
     component = Finder(finder_config)
+    if MONITOR:
+        mon_start = datetime.datetime.utcnow()
+
     component.run()
+
+    if MONITOR:
+        mon_end = datetime.datetime.utcnow()
+        mon_tags = {
+            "finderTimeTag": mon_start
+        }
+        mon_fields = {
+            "FinderStart": mon_start,
+            "FinderEnd": mon_end,
+            "FinderDuration": mon_end-mon_start
+        }
+        DbbM.report_point("finderElapsed", mon_tags, mon_fields)

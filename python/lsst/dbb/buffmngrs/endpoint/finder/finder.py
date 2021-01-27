@@ -30,6 +30,12 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.exc import SQLAlchemyError
 from ..declaratives import file_creator
 
+MONITOR = 1
+
+if MONITOR:
+    from .. import DbbMonitor
+    DbbM = DbbMonitor.DbbMonitor()
+
 
 __all__ = ["Finder"]
 
@@ -119,11 +125,18 @@ class Finder:
         # Initialize various optional settings.
         self.pause = config.get("pause", 1)
 
+        if MONITOR:
+            self.DbbM = DbbM
+
+
     def run(self):
         """Start the framework.
         """
         while True:
             for relpath in self.search(self.source, **self.search_opts):
+                if MONITOR:
+                    mon_start = datetime.utcnow()
+
                 abspath = os.path.abspath(os.path.join(self.location, relpath))
                 logger.debug(f"starting processing a new file: '{abspath}'")
 
@@ -184,6 +197,18 @@ class Finder:
                 else:
                     logger.debug(f"processing of '{relpath}' completed")
 
+                if MONITOR:
+                    mon_end = datetime.utcnow()
+                    mon_tags = {
+                        "searchPath": relpath
+                    }
+                    mon_fields = {
+                        "searchPathStart": mon_start,
+                        "searchPathStop": mon_end,
+                        "searchPathDuration": mon_end - mon_start
+                    }
+                    self.DbbM.report_point("finderSearchPath", mon_tags, mon_fields)
+
             logger.debug(f"no new files, next check in {self.pause} sec.")
             time.sleep(self.pause)
 
@@ -211,6 +236,9 @@ def get_checksum(path, method='blake2', block_size=4096):
     `str`
         File's hash calculated using a given method.
     """
+    if MONITOR:
+        mon_start = datetime.utcnow()
+
     methods = {
         'blake2': hashlib.blake2b,
         'md5': hashlib.md5,
@@ -220,6 +248,17 @@ def get_checksum(path, method='blake2', block_size=4096):
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(block_size), b""):
             hasher.update(chunk)
+    if MONITOR:
+        mon_end = datetime.utcnow()
+        mon_tags = {
+            "chksumPath": path
+        }
+        mon_fields = {
+            "chksumPathStart": mon_start,
+            "chksumPathStop": mon_end,
+            "chksumPathDuration": mon_end - mon_start
+        }
+        DbbM.report_point("finderChecksum", mon_tags, mon_fields)
     return hasher.hexdigest()
 
 
@@ -243,6 +282,9 @@ def scan(directory, blacklist=None, **kwargs):
     generator object
         An iterator over file paths relative to the ``directory``.
     """
+    if MONITOR:
+        mon_start = datetime.utcnow()
+
     if blacklist is None:
         blacklist = []
     for dirpath, _, filenames in os.walk(directory):
@@ -251,6 +293,18 @@ def scan(directory, blacklist=None, **kwargs):
             if any(re.search(patt, path) for patt in blacklist):
                 continue
             yield path
+
+    if MONITOR:
+        mon_end = datetime.utcnow()
+        mon_tags = {
+            "scanDir": directory
+        }
+        mon_fields = {
+            "scanDirStart": mon_start,
+            "scanDirStop": mon_end,
+            "scanDirDuration": mon_end - mon_start
+        }
+        DbbM.report_point("DirScanTime", mon_tags, mon_fields)
 
 
 def parse_rsync_logs(directory, blacklist=None,
@@ -311,6 +365,9 @@ def parse_rsync_logs(directory, blacklist=None,
     generator object
         An iterator over file paths extracted from the log files.
     """
+    if MONITOR:
+        mon_start = datetime.utcnow()
+
     if blacklist is None:
         blacklist = []
     delay = timedelta(seconds=delay)
@@ -372,3 +429,15 @@ def parse_rsync_logs(directory, blacklist=None,
                             continue
                         yield path
                 os.mknod(sentinel)
+
+    if MONITOR:
+        mon_end = datetime.utcnow()
+        mon_tags = {
+            "rsyncScanDir": directory
+        }
+        mon_fields = {
+            "rsyncScanDirStart": mon_start,
+            "rsyncScanDirStop": mon_end,
+            "rsyncScanDirDuration": mon_end - mon_start
+        }
+        DbbM.report_point("RsyncDirScanTime", mon_tags, mon_fields)

@@ -32,6 +32,11 @@ from .plugins import NullIngest
 from ..declaratives import event_creator, file_creator
 from ..status import Status
 
+MONITOR = 1
+
+if MONITOR:
+    from .. import DbbMonitor
+    DbbM = DbbMonitor.DbbMonitor()
 
 __all__ = ["Ingester"]
 
@@ -100,6 +105,9 @@ class Ingester(object):
             logger.error(msg)
             raise ValueError(msg)
 
+        if MONITOR:
+            self.DbbM = DbbM
+
     def run(self):
         """Start the framework.
         """
@@ -153,6 +161,10 @@ class Ingester(object):
 
             # Create a pool of workers to ingest the files. The pool will be
             # freed once processing is completed.
+            if MONITOR:
+                mon_start = datetime.datetime.utcnow()
+                queue_length = inp.qsize()
+
             threads = []
             num_threads = min(self.num_threads, inp.qsize())
             for _ in range(num_threads):
@@ -167,6 +179,18 @@ class Ingester(object):
             for t in threads:
                 t.join()
             del threads[:]
+
+            if MONITOR:
+                mon_end = datetime.datetime.utcnow()
+                mon_tags = {
+                    "ingestLength": queue_length
+                }
+                mon_fields = {
+                    "ingestStart": mon_start,
+                    "ingestStop": mon_end,
+                    "ingestDuration": mon_end - mon_start
+                }
+                self.DbbM.report_point("ingesting", mon_tags, mon_fields)
 
             # Process the results of the ingest attempts.
             processed = {}
@@ -224,6 +248,9 @@ class Ingester(object):
         #         (SELECT *
         #         FROM <event table> AS e
         #         WHERE e.files_id = f.id);
+        if MONITOR:
+            mon_start = datetime.datetime.utcnow()
+
         query = self.session.query(self.File.id).\
             filter(~exists().where(self.Event.files_id == self.File.id))
         try:
@@ -239,6 +266,18 @@ class Ingester(object):
                 self.session.commit()
             except SQLAlchemyError as ex:
                 logger.error(f"failed to add new files: {ex}")
+
+        if MONITOR:
+            mon_end = datetime.datetime.utcnow()
+            mon_tags = {
+                "None": None
+            }
+            mon_fields = {
+                "fetchQueryStart": mon_start,
+                "fetchQueryStop": mon_end,
+                "fetchQueryDuration": mon_end - mon_start
+            }
+            self.DbbM.report_point("fetchQuery", mon_tags, mon_fields)
 
     def _grab(self):
         """Select a group of files for ingestion.
@@ -261,6 +300,9 @@ class Ingester(object):
         #                 WHERE s.start_time = t.last AND s.status = '<>') AS u
         #     ON r.id = u.files_id
         #     LIMIT <batch_size>;
+        if MONITOR:
+            mon_start = datetime.datetime.utcnow()
+
         stmt = self.session.query(self.Event.files_id,
                                   func.max(self.Event.start_time).\
                                   label("last")).\
@@ -289,6 +331,19 @@ class Ingester(object):
         except SQLAlchemyError as ex:
             logger.error(f"cannot commit updates: {ex}")
             records.clear()
+
+        if MONITOR:
+            mon_end = datetime.datetime.utcnow()
+            mon_tags = {
+                "None": None
+            }
+            mon_fields = {
+                "recordGrabStart": mon_start,
+                "recordGrabStop": mon_end,
+                "recordGrabDuration": mon_end - mon_start
+            }
+            self.DbbM.report_point("recordGrab", mon_tags, mon_fields)
+
         return records
 
     def _process(self, channel):
@@ -306,6 +361,9 @@ class Ingester(object):
             Files' absolute paths mapped to the results of their ingest
             attempt.
         """
+        if MONITOR:
+            mon_start = datetime.datetime.utcnow()
+
         events = {}
         while not channel.empty():
             abspath, timestamp, duration, message, version = channel.get()
@@ -316,6 +374,19 @@ class Ingester(object):
                 "err_message": message,
             }
             events[abspath] = self.Event(**fields)
+
+        if MONITOR:
+            mon_end = datetime.datetime.utcnow()
+            mon_tags = {
+                "None": None
+            }
+            mon_fields = {
+                "processStart": mon_start,
+                "processStop": mon_end,
+                "processDuration": mon_end - mon_start
+            }
+            self.DbbM.report_point("processEvents", mon_tags, mon_fields)
+
         return events
 
 
