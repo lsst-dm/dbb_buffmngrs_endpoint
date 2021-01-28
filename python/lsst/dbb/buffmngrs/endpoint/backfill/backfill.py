@@ -112,7 +112,7 @@ class Backfill:
                 dirname, filename = os.path.split(relpath)
                 logger.debug(f"{relpath}: starting processing")
 
-                logger.debug(f"checking if already tracked")
+                logger.debug("checking if already tracked")
                 try:
                     record = self.session.query(self.File). \
                         filter(self.File.relpath == dirname,
@@ -134,13 +134,13 @@ class Backfill:
                 except FileNotFoundError:
                     logger.error(f"{relpath}: no such file")
                     logger.debug(f"{relpath}: terminating processing")
-                    acc["failure"] += 1
+                    counts["notfound"] += 1
                     continue
 
                 # Always make BOTH inserts in a single transaction!
                 # Otherwise new entry in file table may be picked up by
                 # an Ingester daemon running in the background.
-                logger.debug(f"updating database entries")
+                logger.debug("updating database entries")
 
                 # Add file record (starts the transaction).
                 file = self.File(

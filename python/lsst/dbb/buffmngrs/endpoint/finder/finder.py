@@ -127,7 +127,7 @@ class Finder:
 
                 action_type = "std"
 
-                logger.debug(f"checking if already tracked")
+                logger.debug("checking if already tracked")
                 try:
                     checksum = get_checksum(abspath)
                 except FileNotFoundError:
@@ -161,7 +161,7 @@ class Finder:
                 if action_type == "alt":
                     continue
 
-                logger.debug(f"updating database entries")
+                logger.debug("updating database entries")
                 dirname, basename = os.path.split(action.path)
                 entry = self.File(
                     relpath=os.path.relpath(dirname, start=self.storage),
