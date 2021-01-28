@@ -62,7 +62,7 @@ def start(filename, dump, validate):
     with open(filename) as f:
         configuration = yaml.safe_load(f)
     if validate:
-        schema = yaml.safe_load(validation.backfill)
+        schema = yaml.safe_load(validation.BACKFILL)
         try:
             jsonschema.validate(instance=configuration, schema=schema)
         except jsonschema.ValidationError as ex:

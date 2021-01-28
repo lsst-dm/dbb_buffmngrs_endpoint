@@ -22,10 +22,10 @@
 """
 
 
-__all__ = ["backfill", "finder", "ingester"]
+__all__ = ["BACKFILL", "FINDER", "INGESTER"]
 
 
-finder = """
+FINDER = """
 ---
 type: object
 properties:
@@ -126,7 +126,7 @@ required:
     - finder
 """
 
-ingester = """
+INGESTER = """
 ---
 type: object
 properties:
@@ -290,7 +290,7 @@ required:
     - ingester
 """
 
-backfill = """
+BACKFILL = """
 ---
 type: object
 properties:

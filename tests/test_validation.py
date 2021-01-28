@@ -31,7 +31,7 @@ TESTDIR = os.path.dirname(__file__)
 class FinderConfigValidationTest(unittest.TestCase):
 
     def setUp(self):
-        self.schema = yaml.safe_load(validation.finder)
+        self.schema = yaml.safe_load(validation.FINDER)
         self.etc = os.path.join(TESTDIR, "../etc")
 
     def tearDown(self):
@@ -48,7 +48,7 @@ class FinderConfigValidationTest(unittest.TestCase):
 class BackfillConfigValidationTest(unittest.TestCase):
 
     def setUp(self):
-        self.schema = yaml.safe_load(validation.backfill)
+        self.schema = yaml.safe_load(validation.BACKFILL)
         self.etc = os.path.join(TESTDIR, "../etc")
 
     def tearDown(self):
@@ -65,7 +65,7 @@ class BackfillConfigValidationTest(unittest.TestCase):
 class Gen2IngesterConfigValidationTest(unittest.TestCase):
 
     def setUp(self):
-        self.schema = yaml.safe_load(validation.ingester)
+        self.schema = yaml.safe_load(validation.INGESTER)
         self.etc = os.path.join(TESTDIR, "../etc")
 
     def tearDown(self):
@@ -82,7 +82,7 @@ class Gen2IngesterConfigValidationTest(unittest.TestCase):
 class Gen3IngesterConfigValidationTest(unittest.TestCase):
 
     def setUp(self):
-        self.schema = yaml.safe_load(validation.ingester)
+        self.schema = yaml.safe_load(validation.INGESTER)
         self.etc = os.path.join(TESTDIR, "../etc")
 
     def tearDown(self):
