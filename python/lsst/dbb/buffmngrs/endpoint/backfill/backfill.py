@@ -38,7 +38,7 @@ __all__ = ["Backfill"]
 logger = logging.getLogger(__name__)
 
 
-class Backfill(object):
+class Backfill:
     """A backfill tool allowing one to deal with historical files.
 
     It creates database entries for historical files, i.e., files which were
