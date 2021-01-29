@@ -73,6 +73,8 @@ class Backfill:
 
         self.session = config["session"]
 
+        # Create necessary object-relational mappings. We are doing it
+        # dynamically as RDBMS tables to use are determined at runtime.
         required = {"event", "file"}
         missing = required - set(config["tablenames"])
         if missing:
@@ -87,7 +89,14 @@ class Backfill:
             msg = f"directory '{self.storage}' not found"
             logger.error(msg)
             raise ValueError(msg)
+
         self.sources = config["sources"]
+        for src in [path for path in self.sources if path.startswith("/")]:
+            logger.warning(f"{src} is absolute, should be relative")
+            if os.path.commonpath([self.storage, src]) != self.storage:
+                msg = f"{src} is not located in the storage area"
+                logger.error(msg)
+                raise ValueError(msg)
 
         search = config["search"]
         self.search_opts = dict(blacklist=search.get("blacklist", None))
@@ -95,15 +104,22 @@ class Backfill:
     def run(self):
         """Start the backfill process.
         """
-        acc = dict(failure=0, success=0)
+        counts = dict(failure=0, notfound=0, success=0, tracked=0)
+
+        # Expand source specifications into actual sources. A source is an
+        # absolute path to either a file or a directory.  Sources
+        # corresponding to a given specification remain grouped together.
         sources = [glob(os.path.join(self.storage, s)) for s in self.sources]
         for source in chain(*sources):
             logger.debug(f"{source}: setting as file source")
             if not os.path.exists(source):
                 logger.warning(f"{source}: no such file or directory")
-                acc["failure"] += 1
+                counts["notfound"] += 1
                 continue
 
+            # If a source is a directory construct an generator which will
+            # traverse it to find files matching the search criteria.  All
+            # return file paths will be relative to that directory.
             paths = scan(source, **self.search_opts) if os.path.isdir(source) \
                 else [source]
             for path in paths:
@@ -120,12 +136,12 @@ class Backfill:
                 except SQLAlchemyError as ex:
                     logger.error(f"{relpath}: cannot check if tracked: {ex}")
                     logger.debug(f"{relpath}: terminating processing")
-                    acc["failure"] += 1
+                    counts["failure"] += 1
                     continue
                 if record is not None:
-                    logger.warning(f"file already tracked (id: {record.id})")
+                    logger.info(f"file already tracked (id: {record.id})")
                     logger.debug(f"{relpath}: terminating processing")
-                    acc["failure"] += 1
+                    counts["tracked"] += 1
                     continue
 
                 logger.debug(f"calculating checksum")
@@ -158,7 +174,7 @@ class Backfill:
                     self.session.rollback()
                     logger.error(f"{relpath}: cannot create file entry: {ex}")
                     logger.debug(f"{relpath}: terminating processing")
-                    acc["failure"] += 1
+                    counts["failure"] += 1
                     continue
 
                 # Add the corresponding event record.
@@ -177,14 +193,32 @@ class Backfill:
                     self.session.rollback()
                     logger.error(f"{relpath}: cannot create database entries: "
                                  f"{ex}")
-                    acc["failure"] += 1
+                    counts["failure"] += 1
                 else:
                     logger.debug(f"{relpath}: processing completed")
-                    acc["success"] += 1
-        total = sum(x for x in acc.values())
-        if total == 0:
-            logger.warning("no backfill attempts were made")
-        if acc["failure"] != 0:
-            logger.warning("some backfill attempts failed")
+                    counts["success"] += 1
+
+        # Use this list to collect any errors, if any, for future reference.
+        errors = []
+        fails, notfound, successes, tracked = counts.values()
+        total = sum(val for key, val in counts.items() if key != "notfound")
+        if total != 0:
+            logger.info(f"files meeting the search criteria: {total}")
+            logger.info(f"failed backfill attempts: {fails}")
+            logger.info(f"files already tracked: {tracked}")
+            logger.info(f"files backfilled successfully: {successes}")
+            if fails == 0:
+                logger.info("all files matching search criteria were "
+                            "backfilled successfully")
+            else:
+                msg = f"{fails} out of {total} backfill attempts failed"
+                logger.warning(msg)
+                errors.append(msg)
         else:
-            logger.info("all found files were backfilled successfully")
+            logger.warning("no files meeting search criteria found")
+        if notfound != 0:
+            msg = f"{notfound} sources became inaccessible during backfilling"
+            logger.warning(msg)
+            errors.append(msg)
+        if errors:
+            raise RuntimeError("; ".join(errors))
