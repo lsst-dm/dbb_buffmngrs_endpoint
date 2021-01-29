@@ -19,22 +19,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import importlib
-import inspect
-import jsonschema
 import logging
 import click
 import yaml
-from sqlalchemy import create_engine, inspect
-from sqlalchemy.orm import sessionmaker
 from .ingester import Ingester
-from .. import validation
-from ..utils import (
-    dump_config,
-    dump_env,
-    setup_logging,
-    find_missing_tables,
-    fully_qualify_tables,
-)
+from ..utils import dump_all, setup_connection, setup_logging, validate_config
+from ..validation import INGESTER
 
 
 logger = logging.getLogger(__name__)
@@ -60,62 +50,23 @@ def start(filename, dump, validate):
     with open(filename) as f:
         configuration = yaml.safe_load(f)
     if validate:
-        schema = yaml.safe_load(validation.INGESTER)
-        try:
-            jsonschema.validate(instance=configuration, schema=schema)
-        except jsonschema.ValidationError as ex:
-            raise ValueError(f"Configuration error: {ex.message}.")
-        except jsonschema.SchemaError as ex:
-            raise ValueError(f"Schema error: {ex.message}.")
+        schema = yaml.safe_load(INGESTER)
+        validate_config(configuration, schema)
         return
 
     config = configuration.get("logging", None)
     setup_logging(options=config)
 
     if dump:
-        msg = "runtime environment and configuration:\n\n"
-        msg += dump_env()
-        msg += "\n"
-        msg += dump_config(configuration)
-        logger.info(msg)
+        logger.info(dump_all(configuration))
 
     logger.info("setting up database connection...")
     config = configuration["database"]
-
-    module = importlib.import_module("sqlalchemy.pool")
-    pool_name = config.get("pool_class", "QueuePool")
     try:
-        class_ = getattr(module, pool_name)
-    except AttributeError:
-        msg = f"unknown connection pool type: {pool_name}"
-        logger.error(msg)
-        raise RuntimeError(msg)
-
-    engine = create_engine(config["engine"],
-                           echo=config.get("echo", False),
-                           poolclass=class_)
-    insp = inspect(engine)
-
-    # Save tablenames for future reference making sure the schema is always
-    # explicitly specified (needed to properly define ORMs later on).
-    tablenames = fully_qualify_tables(insp, dict(config["tablenames"]))
-
-    logger.info("checking if required database tables exist...")
-    try:
-        missing = find_missing_tables(insp, list(tablenames.values()),
-                                      skip_default=True)
-    except Exception as ex:
-        msg = f"{ex}"
-        logger.error(msg)
-        raise RuntimeError(msg)
-    else:
-        if missing:
-            msg = f"table(s) {', '.join(missing)} not found in the database."
-            logger.error(msg)
-            raise RuntimeError(msg)
-
-    Session = sessionmaker(bind=engine)
-    session = Session()
+        session, tablenames = setup_connection(config)
+    except RuntimeError as ex:
+        logger.error(ex)
+        raise RuntimeError(ex) from ex
 
     logger.info("setting up Ingester...")
     config = configuration["ingester"]
