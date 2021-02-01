@@ -18,28 +18,27 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""Command line interface for the Finder component.
+"""Command line interface for the Backfill component.
 """
-import importlib
 import logging
 import click
 import yaml
-from .finder import Finder
+from .backfill import Backfill
 from ..utils import dump_all, setup_connection, setup_logging, validate_config
-from ..validation import FINDER
+from ..validation import BACKFILL
 
 
 logger = logging.getLogger(__name__)
 
 
 @click.group()
-def finder():
-    """Manage file discovery at a specified location.
+def backfill():
+    """Populate the database with entries for historical files.
     """
     pass
 
 
-@finder.command()
+@backfill.command()
 @click.option("--dump/--no-dump", default=True,
               help="Log runtime environment and configuration "
                    "(ignored if severity is set to WARNING and higher).")
@@ -47,12 +46,12 @@ def finder():
               help="Validate configuration before starting the service.")
 @click.argument("filename", type=click.Path(exists=True))
 def start(filename, dump, validate):
-    """Starts a finder using a configuration from FILENAME.
+    """Starts a backfill using a configuration from FILENAME.
     """
     with open(filename) as f:
         configuration = yaml.safe_load(f)
     if validate:
-        schema = yaml.safe_load(FINDER)
+        schema = yaml.safe_load(BACKFILL)
         validate_config(configuration, schema)
         return
 
@@ -68,42 +67,18 @@ def start(filename, dump, validate):
         session, tablenames = setup_connection(config)
     except RuntimeError as ex:
         logger.error(ex)
-        raise RuntimeError(ex) from ex
+        raise RuntimeError(ex)
 
-    logger.info("setting up Finder...")
-    config = configuration["finder"]
+    logger.info("setting up Backfill...")
+    config = configuration["backfill"]
 
-    # Create Finder specific configuration. It is initialized with
+    # Create Backfill specific configuration. It is initialized with
     # settings from relevant section of the global configuration, but new
     # settings may be added, already existing ones may be altered.
-    finder_config = dict(config)
-    finder_config["session"] = session
-    finder_config["tablenames"] = tablenames
+    backfill_config = dict(config)
+    backfill_config["session"] = session
+    backfill_config["tablenames"] = tablenames
 
-    # Set up standard and alternative file actions.
-    package_name = "lsst.dbb.buffmngrs.endpoint.finder"
-    module = importlib.import_module(".actions", package=package_name)
-    for type_, name in config["actions"].items():
-        if name is None:
-            name = "Null"
-        try:
-            class_ = getattr(module, name)
-        except AttributeError as ex:
-            msg = f"Unknown file action: '{name}'."
-            logger.error(msg)
-            raise RuntimeError(msg)
-        else:
-            action_config = {}
-            if name == "Move":
-                action_config["src"] = config["source"]
-                action_config["dst"] = config["storage"]
-            try:
-                action = class_(action_config)
-            except ValueError as ex:
-                msg = f"{class_.__name__}: invalid configuration: {ex}."
-                raise RuntimeError(msg)
-            finder_config[type_] = action
-
-    logger.info("starting Finder...")
-    component = Finder(finder_config)
+    logger.info("starting Backfill...")
+    component = Backfill(backfill_config)
     component.run()

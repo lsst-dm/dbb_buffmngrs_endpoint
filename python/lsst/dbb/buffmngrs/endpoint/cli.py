@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import click
 import logging
+from .backfill.commands import backfill
 from .finder.commands import finder
 from .ingester.commands import ingester
 
@@ -34,6 +35,7 @@ def cli():
 
 cli.add_command(finder)
 cli.add_command(ingester)
+cli.add_command(backfill)
 
 
 def main():

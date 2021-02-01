@@ -18,56 +18,26 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import hashlib
+import importlib
 import logging
 import subprocess
+import jsonschema
 import yaml
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.exc import DBAPIError, SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
 
 
-__all__ = (
-    "dump_config",
-    "dump_env",
-    "setup_logging",
+__all__ = [
+    "dump_all",
     "find_missing_tables",
     "fully_qualify_tables",
-)
-
-
-def setup_logging(options=None):
-    """Configure logger.
-
-    Parameters
-    ----------
-    options : dict, optional
-       Logger settings. The key/value pairs it contains will be used to
-       override corresponding default settings.  If empty or None (default),
-       logger will be set up with default settings.
-
-    Returns
-    -------
-    `logging.Logger`
-        A root logger to use.
-    """
-    # Define default settings for the logger. They will be overridden with
-    # values found in 'options', if specified.
-    settings = {
-        "file": None,
-        "format": "%(asctime)s:%(name)s:%(levelname)s:%(message)s",
-        "level": "INFO",
-    }
-    if options is not None:
-        settings.update(options)
-
-    kwargs = {"format": settings["format"]}
-
-    level_name = settings["level"]
-    level = getattr(logging, level_name.upper(), logging.WARNING)
-    kwargs["level"] = level
-
-    logfile = settings["file"]
-    if logfile is not None:
-        kwargs["filename"] = logfile
-
-    logging.basicConfig(**kwargs)
+    "get_checksum",
+    "setup_connection",
+    "setup_logging",
+    "validate_config",
+]
 
 
 def dump_config(config):
@@ -98,6 +68,28 @@ def dump_env():
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              text=True)
     return process.stdout
+
+
+def dump_all(config):
+    """Dump runtime information like environment and configuration.
+
+    Parameters
+    ----------
+    config : `dict`
+        Configuration to dump.
+
+    Returns
+    -------
+    `str`
+        A report capturing runtime information.
+    """
+    messages = [
+        "runtime environment and configuration",
+        "",
+        dump_env(),
+        dump_config(config),
+    ]
+    return "\n".join(messages)
 
 
 def find_missing_tables(inspector, specifications, skip_default=False):
@@ -150,9 +142,10 @@ def fully_qualify_tables(inspector, specifications):
     ----------
     inspector : `sqlalchemy.engine.reflection.Inspector`
         A proxy object allowing for database inspection.
-    specifications : `list` [ `dict` ]
-        A list of table specifications. Each specification must be a dictionary
-        of the form:
+    specifications : `dict` [ `str', `dict` ]
+        A mapping between object relational mappers (ORMs) and corresponding
+        table specifications. Each specification must be a dictionary of
+        the form:
 
             {
                 "schema": "<schema_name>",
@@ -164,11 +157,154 @@ def fully_qualify_tables(inspector, specifications):
 
     Returns
     -------
-    `list`
-        A list of specification including the schema in which table resides.
+    `dict` [ `str`, `dict` ]
+        The mapping of between ORMs and table specifications including
+        the schema in which table resides.
     """
     default_schema = inspector.default_schema_name
     for spec in specifications.values():
         if spec.setdefault("schema", default_schema) is None:
             spec["schema"] = default_schema
     return specifications
+
+
+def get_checksum(path, method='blake2', block_size=4096):
+    """Calculate checksum for a file using BLAKE2 cryptographic hash function.
+
+    Parameters
+    ----------
+    path : `str`
+        Path to the file.
+    method : `str`
+        An algorithm to use for calculating file's hash. Supported algorithms
+        include:
+        * _blake2_: BLAKE2 cryptographic hash,
+        * _md5_: traditional MD5 algorithm,
+        * _sha1_: SHA-1 cryptographic hash.
+        By default or if unsupported method is provided, BLAKE2 algorithm wil
+        be used.
+    block_size : `int`, optional
+        Size of the block
+
+    Returns
+    -------
+    `str`
+        File's hash calculated using a given method.
+    """
+    methods = {
+        'blake2': hashlib.blake2b,
+        'md5': hashlib.md5,
+        'sha1': hashlib.sha1,
+    }
+    hasher = methods.get(method, hashlib.blake2b)()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(block_size), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def setup_logging(options=None):
+    """Configure logger.
+
+    Parameters
+    ----------
+    options : dict, optional
+       Logger settings. The key/value pairs it contains will be used to
+       override corresponding default settings.  If empty or None (default),
+       logger will be set up with default settings.
+
+    Returns
+    -------
+    `logging.Logger`
+        A root logger to use.
+    """
+    # Define default settings for the logger. They will be overridden with
+    # values found in 'options', if specified.
+    settings = {
+        "file": None,
+        "format": "%(asctime)s:%(name)s:%(levelname)s:%(message)s",
+        "level": "INFO",
+    }
+    if options is not None:
+        settings.update(options)
+
+    kwargs = {"format": settings["format"]}
+
+    level_name = settings["level"]
+    level = getattr(logging, level_name.upper(), logging.WARNING)
+    kwargs["level"] = level
+
+    logfile = settings["file"]
+    if logfile is not None:
+        kwargs["filename"] = logfile
+
+    logging.basicConfig(**kwargs)
+
+
+def setup_connection(config):
+    """Create a database connection.
+
+    Parameters
+    ----------
+    config : `dict`
+        Configuration describing the details of the database connection.
+
+    Returns
+    -------
+    session : `sqlalchemy.orm.session.Session`
+        Object managing persistence operations for ORMs.
+    tablenames : `dict`
+        Table specifications needed to properly define ORMs later on.
+    """
+    module = importlib.import_module("sqlalchemy.pool")
+    pool_name = config.get("pool_class", "QueuePool")
+    try:
+        class_ = getattr(module, pool_name)
+    except AttributeError as ex:
+        raise RuntimeError(f"unknown connection pool: {pool_name}") from ex
+
+    try:
+        engine = create_engine(config["engine"],
+                               echo=config.get("echo", False),
+                               poolclass=class_)
+    except (DBAPIError, SQLAlchemyError) as ex:
+        raise RuntimeError(ex) from ex
+
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    try:
+        insp = inspect(engine)
+        tablenames = fully_qualify_tables(insp, dict(config["tablenames"]))
+        missing = find_missing_tables(insp, list(tablenames.values()),
+                                      skip_default=True)
+    except (DBAPIError, SQLAlchemyError) as ex:
+        raise RuntimeError(ex) from ex
+    else:
+        if missing:
+            raise RuntimeError(f"table(s) {', '.join(missing)} not found")
+
+    return session, tablenames
+
+
+def validate_config(config, schema):
+    """Validate configuration.
+
+    Parameters
+    ----------
+    config : `dict`
+        Configuration that needs to validated.
+    schema : `dict`
+        A schema the configuration should be validated againt.
+
+    Raises
+    ------
+    ValueError
+        If configuration can't be validated against the provided schema.
+    """
+    try:
+        jsonschema.validate(instance=config, schema=schema)
+    except jsonschema.ValidationError as ex:
+        raise ValueError(f"configuration error: {ex.message}")
+    except jsonschema.SchemaError as ex:
+        raise ValueError(f"schema error: {ex.message}")

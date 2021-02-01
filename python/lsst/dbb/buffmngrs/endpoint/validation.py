@@ -22,10 +22,10 @@
 """
 
 
-__all__ = ["finder", "ingester"]
+__all__ = ["BACKFILL", "FINDER", "INGESTER"]
 
 
-finder = """
+FINDER = """
 ---
 type: object
 properties:
@@ -40,8 +40,12 @@ properties:
                     file:
                         type: object
                         properties:
-                            schema: string
-                            table: string
+                            schema:
+                                anyOf:
+                                    - type: string
+                                    - type: "null"
+                            table:
+                                type: string
                         required:
                             - table
                 required:
@@ -122,7 +126,7 @@ required:
     - finder
 """
 
-ingester = """
+INGESTER = """
 ---
 type: object
 properties:
@@ -136,16 +140,24 @@ properties:
                 properties:
                     file:
                         type: object
-                        properties
-                            schema: string
-                            table: string
+                        properties:
+                            schema:
+                                anyOf:
+                                    - type: string
+                                    - type: "null"
+                            table:
+                                type: string
                         required:
                             - table
                     event:
                         type: object
-                        properties
-                            schema: string
-                            table: string
+                        properties:
+                            schema:
+                                anyOf:
+                                    - type: string
+                                    - type: "null"
+                            table:
+                                type: string
                         required:
                             - table
                 required:
@@ -163,20 +175,6 @@ properties:
         properties:
             storage:
                 type: string
-            blacklist:
-                anyOf:
-                    - type: array
-                      items:
-                         type: string
-                      uniqueItems: true
-                    - type: "null"
-            whitelist:
-                anyOf:
-                    - type: array
-                      items:
-                         type: string
-                      uniqueItems: true
-                    - type: "null"
             plugin:
                 type: object
                 properties:
@@ -223,13 +221,19 @@ properties:
                                         root:
                                             type: string
                                         config:
-                                            type: object
+                                            anyOf:
+                                                - type: object
+                                                - type: "null"
                                         config_file:
-                                            type: string
+                                            anyOf:
+                                                - type: object
+                                                - type: "null"
                                         ingest_task:
                                             type: string
                                         output_run:
-                                            type: string
+                                            anyOf:
+                                                - type: object
+                                                - type: "null"
                                         transfer:
                                             type: string
                                             enum:
@@ -243,7 +247,6 @@ properties:
                                                 - direct
                                     required:
                                         - root
-                                        - output_run
                 required:
                     - name
                     - config
@@ -285,4 +288,94 @@ properties:
 required:
     - database
     - ingester
+"""
+
+BACKFILL = """
+---
+type: object
+properties:
+    database:
+        type: object
+        properties:
+            engine:
+                type: string
+            tablenames:
+                type: object
+                properties:
+                    file:
+                        type: object
+                        properties:
+                            schema:
+                                anyOf:
+                                    - type: string
+                                    - type: "null"
+                            table:
+                                type: string
+                        required:
+                            - table
+                    event:
+                        type: object
+                        properties:
+                            schema:
+                                anyOf:
+                                    - type: string
+                                    - type: "null"
+                            table:
+                                type: string
+                        required:
+                            - table
+                required:
+                    - file
+                    - event
+            echo:
+                type: boolean
+            pool_class:
+                type: string
+        required:
+            - engine
+            - tablenames
+    backfill:
+        type: object
+        properties:
+            storage:
+                type: string
+            sources:
+                type: array
+                items:
+                    type: string
+            search:
+                type: object
+                properties:
+                    blacklist:
+                        anyOf:
+                            - type: array
+                              items:
+                                 type: string
+                              uniqueItems: true
+                            - type: "null"
+        required:
+            - storage
+            - sources
+    logging:
+        type: object
+        properties:
+            file:
+                anyOf:
+                    - type: string
+                    - type: "null"
+            format:
+                anyOf:
+                    - type: string
+                    - type: "null"
+            level:
+                type: string
+                enum:
+                    - DEBUG
+                    - INFO
+                    - WARNING
+                    - ERROR
+                    - CRITICAL
+required:
+    - database
+    - backfill
 """

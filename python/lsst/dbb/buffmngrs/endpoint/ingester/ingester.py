@@ -43,7 +43,7 @@ field_names = ['abspath', 'timestamp', 'duration', 'message', 'version']
 Result = namedtuple('Result', field_names)
 
 
-class Ingester(object):
+class Ingester:
     """Framework managing image ingest process.
 
     Ingester manages the process of ingesting images to different database

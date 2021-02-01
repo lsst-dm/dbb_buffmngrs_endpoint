@@ -4,21 +4,17 @@ database:
     file:
       schema: null
       table: loc_inst_files
+    event:
+      schema: null
+      table: loc_inst_gen2_file_events
   echo: false
   pool_class: QueuePool
-finder:
-  source: /data/buffer
+backfill:
   storage: /data/storage
-  actions:
-    standard: Move
-    alternative: Delete
+  sources:
+    - "subdir"
   search:
-    method: scan
     blacklist: null
-    date: null
-    past_days: 1
-    future_days: 1
-  pause: 1
 logging:
   file: null
   format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
