@@ -86,7 +86,7 @@ class Reply:
     """
 
     status: Status = None
-    """Status of the ingest attempt
+    """Status of the ingest attempt.
     """
 
 
@@ -193,6 +193,9 @@ class Ingester:
                     )
                     replies.put(rep)
                     continue
+
+                # Create a request to make an ingest attempt for the file
+                # which passed all search criteria and is not empty.
                 req = Request(
                     filepath=os.path.join(self.storage, path),
                     id=rec.id,
@@ -255,10 +258,15 @@ class Ingester:
     def _fetch(self):
         """Fetch new files, if any.
 
-        Queries the database for newly discovered files and enqueues them for
-        processing.
+        Queries the database for new files.  A file is considered new if
+        there are no events associated with it.
+
+        For each selected file, a new event is recorded in the database with
+        the status set to UNTRIED.
+
+        No such events will be created if any errors are encountered.
         """
-        # Find new files that is files for which there is no recorded events:
+        # Find new files that is files for which there are no recorded events:
         #
         #     SELECT id
         #     FROM <file table> AS f
@@ -284,7 +292,15 @@ class Ingester:
                 logger.error(f"failed to add new files: {ex}")
 
     def _grab(self):
-        """Select a group of files for ingestion.
+        """Select a group of files for ingestion with a given status.
+
+        Status of the files which will be selected is set during class
+        instantiation through a configuration option 'file_status'.
+
+        For each selected file, a new event is recorded in the database with
+        the status set to PENDING.
+
+        No such events will be created if any errors are encountered.
 
         Returns
         -------
@@ -331,16 +347,18 @@ class Ingester:
             try:
                 self.session.commit()
             except SQLAlchemyError as ex:
+                records.clear()
                 self.session.rollback()
                 logger.error(f"cannot commit updates: {ex}")
         return records
 
 
-def worker(inp, out, plugin_cls=None, plugin_cfg=None):
+def worker(inp, out, plugin_cls, plugin_cfg):
     """Perform a given task for incoming inputs.
 
-    Function representing a thread worker.  It takes a file name from its input
-    channel and performs an operation on it.
+    Function representing a thread worker.  It takes requests from the input
+    channel, process them, and enqueues corresponding replies in the output
+    channel.
 
     Parameters
     ----------

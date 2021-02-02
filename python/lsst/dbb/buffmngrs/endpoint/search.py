@@ -60,8 +60,8 @@ def register(gen):
 def scan(directory, blacklist=None, **kwargs):
     """Generate the file names in a directory tree.
 
-    Generates the file paths in a given directory tree excluding those files
-    that were blacklisted.
+    Generates the file paths in a given directory tree ignoring files
+    whose names match select patterns.
 
     Parameters
     ----------
