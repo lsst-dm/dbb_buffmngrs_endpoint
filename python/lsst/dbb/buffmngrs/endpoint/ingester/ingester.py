@@ -22,10 +22,11 @@ import datetime
 import logging
 import os
 import queue
+import sys
 import threading
 import time
 import traceback
-from collections import namedtuple
+from dataclasses import dataclass
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.expression import exists, func
 from .plugins import NullIngest
@@ -39,8 +40,54 @@ __all__ = ["Ingester"]
 logger = logging.getLogger(__name__)
 
 
-field_names = ['abspath', 'timestamp', 'duration', 'message', 'version']
-Result = namedtuple('Result', field_names)
+@dataclass
+class Request:
+    """Message representing a request to make an ingest attempt for a file.
+
+    At minimum, it should contain all pieces of information required to
+    make an ingest attempt for a given file (e.g. file location).
+    """
+
+    filepath: str = None
+    """Absolute path to the file.
+    """
+
+    id: int = None
+    """Id of the database record associated with the file.
+    """
+
+
+@dataclass
+class Reply:
+    """Message representing results of an ingest attempt.
+
+    In general, it should contain any pieces of information that may be
+    needed to make a database entry describing the ingest attempt.
+    """
+
+    id: int = None
+    """Id of the request the result corresponds to.
+    """
+
+    version: str = None
+    """Version of the LSST ingest software.
+    """
+
+    timestamp: datetime.datetime = None
+    """Point in time when the ingest attempt was made.
+    """
+
+    duration: datetime.timedelta = None
+    """Duration of the ingest attempt.
+    """
+
+    message: str = None
+    """Any info to be associated with an ingest attempt (e.g. error message).
+    """
+
+    status: Status = None
+    """Status of the ingest attempt
+    """
 
 
 class Ingester:
@@ -103,12 +150,8 @@ class Ingester:
     def run(self):
         """Start the framework.
         """
-        # Check if we are connected to the right database that is if the
-        # required tables are available.
-
-        inp = queue.Queue()
-        out = queue.Queue()
-        err = queue.Queue()
+        requests = queue.Queue()
+        replies = queue.Queue()
         while True:
 
             # When in normal mode of operation, check for new files.
@@ -128,84 +171,83 @@ class Ingester:
 
             # Schedule an ingest attempt for each file, except when a file
             # does not exist or is empty.
-            for path, rec in records.items():
-                msg = ""
+            for rec in records:
+
+                path = os.path.join(rec.relpath, rec.filename)
+                msg = None
                 try:
-                    sz = os.stat(path).st_size
+                    sz = os.stat(os.path.join(self.storage, path)).st_size
                 except FileNotFoundError:
                     msg = "no such file in the storage area"
                 else:
                     if sz == 0:
                         msg = f"file has {sz} bytes"
-                if msg:
+                if msg is not None:
                     logger.warning(f"cannot process '{path}': " + msg)
-                    ts = datetime.datetime.now()
-                    fields = {
-                        "abspath": path,
-                        "timestamp": ts,
-                        "duration": datetime.timedelta(),
-                        "message": msg,
-                        "version": "N/A"
-                    }
-                    err.put(Result(**fields))
+                    rep = Reply(
+                        id=rec.id,
+                        timestamp=datetime.datetime.now(),
+                        duration=datetime.timedelta(),
+                        message=msg,
+                        status=Status.IGNORED,
+                    )
+                    replies.put(rep)
                     continue
-                inp.put(path)
+                req = Request(
+                    filepath=os.path.join(self.storage, path),
+                    id=rec.id,
+                )
+                requests.put(req)
 
             # Create a pool of workers to ingest the files. The pool will be
             # freed once processing is completed.
             threads = []
-            num_threads = min(self.num_threads, inp.qsize())
+            num_threads = min(self.num_threads, requests.qsize())
             for _ in range(num_threads):
                 t = threading.Thread(target=worker,
-                                     args=(inp, out, err),
+                                     args=(requests, replies),
                                      kwargs={"plugin_cls": self.plugin_cls,
                                              "plugin_cfg": self.plugin_cfg})
                 t.start()
                 threads.append(t)
             for _ in range(len(threads)):
-                inp.put(None)
+                requests.put(None)
             for t in threads:
                 t.join()
             del threads[:]
 
-            # Process the results of the ingest attempts.
-            processed = {}
+            # Create the events related to completed ingest attempts.
+            events = []
+            while not replies.empty():
+                rep = replies.get()
+                event = self.Event(
+                    ingest_ver=rep.version,
+                    start_time=rep.timestamp,
+                    duration=rep.duration,
+                    err_message=rep.message,
+                    status=rep.status,
+                    files_id=rep.id,
+                )
+                events.append(event)
 
-            # Update statuses of the files for which ingest attempt was made
-            # and succeeded.
-            events = self._process(out)
-            for url in events:
-                rec, evt = records[url], events[url]
-                evt.status = Status.SUCCESS
-                evt.files_id = rec.id
-            processed.update(events)
-
-            # Update statuses of the files for which ingest attempt was made
-            # but failed.
-            events = self._process(err)
-            for url in events:
-                rec, evt = records[url], events[url]
-                evt.status = Status.FAILURE
-                evt.files_id = rec.id
-            processed.update(events)
-
-            # Update statuses of the files for which the ingest attempt failed
-            # for other reasons, e.g. a worker was killed by an external
-            # process.
-            events = {}
-            for url in set(records) - set(processed):
-                rec = records[url]
-                evt = self.Event(status=Status.UNKNOWN,
-                                 start_time=datetime.datetime.now(),
-                                 files_id=rec.id)
-                events[url] = evt
-            processed.update(events)
+            # Add events related to ingests attempts that couldn't be accounted
+            # for, e.g. a worker was killed by an external process.
+            known = set(rec.id for rec in records)
+            processed = set(res.files_id for res in events)
+            for id_ in known - processed:
+                event = self.Event(
+                    start_time=datetime.datetime.now(),
+                    status=Status.UNKNOWN,
+                    files_id=id_,
+                )
+                events.append(event)
 
             # Commit all changes to the database.
-            self.session.add_all(processed.values())
+            self.session.add_all(events)
             try:
                 self.session.commit()
             except SQLAlchemyError as ex:
+                self.session.rollback()
                 logger.error(f"cannot commit updates: {ex}")
 
             time.sleep(self.pause)
@@ -228,16 +270,17 @@ class Ingester:
             filter(~exists().where(self.Event.files_id == self.File.id))
         try:
             for (id_,) in query:
-                rec = self.Event(status=Status.UNTRIED.value,
-                                 start_time=datetime.datetime.now(),
-                                 files_id=id_)
-                self.session.add(rec)
+                event = self.Event(status=Status.UNTRIED,
+                                   start_time=datetime.datetime.now(),
+                                   files_id=id_)
+                self.session.add(event)
         except Exception as ex:
             logger.error(f"failed to check for new files: {ex}")
         else:
             try:
                 self.session.commit()
             except SQLAlchemyError as ex:
+                self.session.rollback()
                 logger.error(f"failed to add new files: {ex}")
 
     def _grab(self):
@@ -245,8 +288,9 @@ class Ingester:
 
         Returns
         -------
-        `dict`
-            Files' absolute paths mapped to their database records.
+        `list`
+            List of database records associated with select files; empty if
+            no records were found or any errors were encountered.
         """
         # Find files for which the most recent event has a requested status.
         #
@@ -262,7 +306,7 @@ class Ingester:
         #     ON r.id = u.files_id
         #     LIMIT <batch_size>;
         stmt = self.session.query(self.Event.files_id,
-                                  func.max(self.Event.start_time).\
+                                  func.max(self.Event.start_time).
                                   label("last")).\
             group_by(self.Event.files_id).subquery()
         recent = self.session.query(self.Event.files_id, self.Event.status).\
@@ -273,53 +317,26 @@ class Ingester:
         query = self.session.query(self.File).\
             join(recent, recent.c.files_id == self.File.id).\
             limit(self.batch_size)
-        records = {}
+        records = []
         try:
-            for rec in query:
+            records = list(query)
+        except SQLAlchemyError as ex:
+            logger.error(f"failed to retrieve files for processing: {ex}")
+        else:
+            for rec in records:
                 event = self.Event(status=Status.PENDING,
                                    start_time=datetime.datetime.now(),
                                    files_id=rec.id)
                 self.session.add(event)
-                key = os.path.join(self.storage, rec.relpath, rec.filename)
-                records[key] = rec
-        except Exception as ex:
-            logger.error(f"failed to retrieve files for processing: {ex}")
-        try:
-            self.session.commit()
-        except SQLAlchemyError as ex:
-            logger.error(f"cannot commit updates: {ex}")
-            records.clear()
+            try:
+                self.session.commit()
+            except SQLAlchemyError as ex:
+                self.session.rollback()
+                logger.error(f"cannot commit updates: {ex}")
         return records
 
-    def _process(self, channel):
-        """Process results of ingest attempts from a given channel.
 
-        Parameters
-        ----------
-        channel : queue.Queue
-            Communication channel with the results of the ingest attempts to
-            process.
-
-        Returns
-        -------
-        `dict`
-            Files' absolute paths mapped to the results of their ingest
-            attempt.
-        """
-        events = {}
-        while not channel.empty():
-            abspath, timestamp, duration, message, version = channel.get()
-            fields = {
-                "ingest_ver": version,
-                "start_time": timestamp,
-                "duration": duration,
-                "err_message": message,
-            }
-            events[abspath] = self.Event(**fields)
-        return events
-
-
-def worker(inp, out, err, plugin_cls=None, plugin_cfg=None):
+def worker(inp, out, plugin_cls=None, plugin_cfg=None):
     """Perform a given task for incoming inputs.
 
     Function representing a thread worker.  It takes a file name from its input
@@ -328,12 +345,9 @@ def worker(inp, out, err, plugin_cls=None, plugin_cfg=None):
     Parameters
     ----------
     inp : queue.Queue()
-        Input channel, source of file names for which a task needs to be
-        performed.
+        Channel with ingest requests.
     out : queue.Queue()
-        Output channel for results of the tasks which completed successfully.
-    err : queue.Queue()
-        Error channel for results of the tasks which failed.
+        Channel for gathering the results of the ingest requests.
     plugin_cls : `Plugin`, optional
         An ingest plugin to use. If None (default), nothing will be
         done, effectively a no-op.
@@ -352,25 +366,26 @@ def worker(inp, out, err, plugin_cls=None, plugin_cfg=None):
     plugin = plugin_cls(plugin_cfg)
 
     while True:
-        filename = inp.get()
-        if filename is None:
+        req = inp.get()
+        if req is None:
             break
         start = datetime.datetime.now()
-        chn, msg = None, None
+        message = None
+        status = Status.SUCCESS
         try:
-            plugin.execute(filename)
-        except RuntimeError as ex:
-            logger.error(f"{traceback.format_exc()}")
-            chn, msg = err, f"{ex}"
-        else:
-            chn, msg = out, ""
-        finally:
-            duration = datetime.datetime.now() - start
-            fields = {
-                "abspath": filename,
-                "timestamp": start,
-                "duration": duration,
-                "message": msg,
-                "version": plugin.version()
-            }
-            chn.put(Result(**fields))
+            plugin.execute(req.filepath)
+        except RuntimeError:
+            exc_type, exc_value, _ = sys.exc_info()
+            exc_msg = traceback.format_exception_only(exc_type, exc_value)[0]
+            message = exc_msg.strip()
+            status = Status.FAILURE
+            logger.error(message)
+        rep = Reply(
+            id=req.id,
+            version=plugin.version(),
+            timestamp=start,
+            duration=datetime.datetime.now() - start,
+            message=message,
+            status=status
+        )
+        out.put(rep)
