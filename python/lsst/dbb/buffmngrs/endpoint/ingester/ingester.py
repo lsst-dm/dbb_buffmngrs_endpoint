@@ -22,6 +22,7 @@ import datetime
 import logging
 import os
 import queue
+import re
 import sys
 import threading
 import time
@@ -137,6 +138,12 @@ class Ingester:
         self.Event = event_creator(config["tablenames"])
         self.File = file_creator(config["tablenames"])
 
+        self.includelist = config.get("includelist")
+        if self.includelist is None:
+            self.includelist = []
+        self.excludelist = config.get("excludelist")
+        if self.excludelist is None:
+            self.excludelist = []
         self.batch_size = config.get("batch_size", 10)
         self.daemon = config.get("daemon", True)
         self.pause = config.get("pause", 1)
@@ -169,27 +176,37 @@ class Ingester:
                 time.sleep(self.pause)
                 continue
 
-            # Schedule an ingest attempt for each file, except when a file
-            # does not exist or is empty.
+            # Schedule an ingest attempt for each file, except when a file:
+            # (a) is not on the includelist,
+            # (b) is excluded,
+            # (c) is an empty file
             for rec in records:
-
                 path = os.path.join(rec.relpath, rec.filename)
-                msg = None
-                try:
-                    sz = os.stat(os.path.join(self.storage, path)).st_size
-                except FileNotFoundError:
-                    msg = "no such file in the storage area"
+
+                message, status = None, None
+                if not any(re.search(patt, path) for patt in self.includelist):
+                    message = "doesn't match search criteria: not allowed"
+                    status = Status.IGNORED
+                elif any(re.search(patt, path) for patt in self.excludelist):
+                    message = "doesn't match search criteria: excluded"
+                    status = Status.IGNORED
                 else:
-                    if sz == 0:
-                        msg = f"file has {sz} bytes"
-                if msg is not None:
-                    logger.warning(f"cannot process '{path}': " + msg)
+                    try:
+                        sz = os.stat(os.path.join(self.storage, path)).st_size
+                    except FileNotFoundError:
+                        message = "no such file in the storage area"
+                    else:
+                        if sz == 0:
+                            message = f"file has {sz} bytes"
+                            status = Status.INVALID
+                if message is not None:
+                    logger.warning(f"cannot process '{path}': " + message)
                     rep = Reply(
                         id=rec.id,
                         timestamp=datetime.datetime.now(),
                         duration=datetime.timedelta(),
-                        message=msg,
-                        status=Status.IGNORED,
+                        message=message,
+                        status=status,
                     )
                     replies.put(rep)
                     continue

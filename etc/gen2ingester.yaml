@@ -24,6 +24,8 @@ ingester:
       create: false
       ignoreIngested: false
 
+  includelist: null
+  excludelist: null
   file_status: UNTRIED
   batch_size: 10
   daemon: true

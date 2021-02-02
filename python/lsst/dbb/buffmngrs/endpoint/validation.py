@@ -250,6 +250,20 @@ properties:
                 required:
                     - name
                     - config
+            includelist:
+                anyOf:
+                    - type: array
+                      items:
+                          type: string
+                      uniqueItems: true
+                    - type: "null"
+            excludelist:
+                anyOf:
+                    - type: array
+                      items:
+                          type: string
+                      uniqueItems: true
+                    - type: "null"
             file_status:
                 type: string
             batch_size:

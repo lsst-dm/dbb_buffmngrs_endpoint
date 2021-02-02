@@ -21,6 +21,8 @@ ingester:
       output_run: null
       processes: 1
       transfer: symlink
+  includelist: null
+  excludelist: null
   file_status: UNTRIED
   batch_size: 10
   daemon: true
