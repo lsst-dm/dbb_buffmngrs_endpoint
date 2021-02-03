@@ -14,7 +14,7 @@ backfill:
   sources:
     - "subdir"
   search:
-    blacklist: null
+    excludelist: null
 logging:
   file: null
   format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"

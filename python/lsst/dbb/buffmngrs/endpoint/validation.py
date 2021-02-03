@@ -91,11 +91,12 @@ properties:
                         enum:
                             - scan
                             - parse_rsync_logs
-                    blacklist:
+                    excludelist:
                         anyOf:
                             - type: array
                               items:
                                   types: string
+                              uniqueItems: true
                             - type: "null"
                     date:
                         anyOf:
@@ -360,7 +361,7 @@ properties:
             search:
                 type: object
                 properties:
-                    blacklist:
+                    excludelist:
                         anyOf:
                             - type: array
                               items:

@@ -57,7 +57,7 @@ def register(gen):
 
 
 @register
-def scan(directory, blacklist=None, **kwargs):
+def scan(directory, excludelist=None, **kwargs):
     """Generate the file names in a directory tree.
 
     Generates the file paths in a given directory tree ignoring files
@@ -67,7 +67,7 @@ def scan(directory, blacklist=None, **kwargs):
     ----------
     directory : `str`
         The root of the directory tree which need to be searched.
-    blacklist : `list` of `str`, optional
+    excludelist : `list` of `str`, optional
         List of regular expressions file names should be match against. If a
         filename matches any of the patterns in the list, file will be ignored.
         By default, no file is ignored.
@@ -79,18 +79,18 @@ def scan(directory, blacklist=None, **kwargs):
     path : `string`
         An file path relative to the ``directory``.
     """
-    if blacklist is None:
-        blacklist = []
+    if excludelist is None:
+        excludelist = []
     for dirpath, _, filenames in os.walk(directory):
         for fn in filenames:
             path = os.path.relpath(os.path.join(dirpath, fn), start=directory)
-            if any(re.search(patt, path) for patt in blacklist):
+            if any(re.search(patt, path) for patt in excludelist):
                 continue
             yield path
 
 
 @register
-def parse_rsync_logs(directory, blacklist=None,
+def parse_rsync_logs(directory, excludelist=None,
                      isodate=None, past_days=1, future_days=1,
                      delay=60, extension="done"):
     """Generate the file names based on the content of the rsync logs.
@@ -123,7 +123,7 @@ def parse_rsync_logs(directory, blacklist=None,
     ----------
     directory : `str`
         The directory where the all log files reside.
-    blacklist : `list` of `str`, optional
+    excludelist : `list` of `str`, optional
         List of regular expressions file names should be match against. If a
         filename matches any of the patterns in the list, file will be ignored.
         By default, no file is ignored.
@@ -148,8 +148,8 @@ def parse_rsync_logs(directory, blacklist=None,
     path : `string`
         A file path extracted from the log files.
     """
-    if blacklist is None:
-        blacklist = []
+    if excludelist is None:
+        excludelist = []
     delay = timedelta(seconds=delay)
     origin = date.today()
     if isodate is not None:
@@ -205,7 +205,7 @@ def parse_rsync_logs(directory, blacklist=None,
                         if "<f+++++++++" not in line:
                             continue
                         _, _, path, *_ = line.strip().split()
-                        if any(re.search(patt, path) for patt in blacklist):
+                        if any(re.search(patt, path) for patt in excludelist):
                             continue
                         yield path
                 os.mknod(sentinel)

@@ -99,7 +99,7 @@ class Backfill:
                 raise ValueError(msg)
 
         search = config["search"]
-        self.search_opts = dict(blacklist=search.get("blacklist", None))
+        self.search_opts = dict(excludelist=search.get("excludelist", None))
 
     def run(self):
         """Start the backfill process.

@@ -309,7 +309,7 @@ directory:
         sources:
           - "2020-12-31"
         search:
-          blacklist:
+          excludelist:
             - \.txt$
 
    .. note::
@@ -322,7 +322,7 @@ directory:
    .. note::
 
       To prevent Python YAML parser from accidental conversion of strings like
-      ``2021-01-01`` into a ``datetime`` objects, enclose them in quotes.
+      ``2021-01-01`` into ``datetime`` objects, enclose them in quotes.
 
 #. Start the backfill tool with
 
