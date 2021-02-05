@@ -246,6 +246,8 @@ properties:
                                                 - move
                                                 - relsymlink
                                                 - direct
+                                        failFast:
+                                            type: boolean
                                     required:
                                         - root
                 required:
