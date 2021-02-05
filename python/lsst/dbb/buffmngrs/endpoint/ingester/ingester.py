@@ -405,16 +405,21 @@ def worker(inp, out, plugin_cls, plugin_cfg):
         if req is None:
             break
         start = datetime.datetime.now()
-        message = None
-        status = Status.SUCCESS
         try:
             plugin.execute(req.filepath)
-        except RuntimeError:
-            exc_type, exc_value, _ = sys.exc_info()
-            exc_msg = traceback.format_exception_only(exc_type, exc_value)[0]
+        except Exception as exc:
+            # Find the root cause of the exception as it seems that for both
+            # Gen2 and Gen3 Butler the most meaningful error messages tend
+            # to be located at the very bottom of the stack trace.
+            while exc.__cause__ is not None:
+                exc = exc.__cause__
+            exc_msg = traceback.format_exception_only(type(exc), exc)[0]
             message = exc_msg.strip()
             status = Status.FAILURE
             logger.error(message)
+        else:
+            message = None
+            status = Status.SUCCESS
         rep = Reply(
             id=req.id,
             version=plugin.version(),
