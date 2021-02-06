@@ -23,14 +23,12 @@ import logging
 import os
 import queue
 import re
-import sys
 import threading
 import time
 import traceback
 from dataclasses import dataclass
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.expression import exists, func
-from .plugins import NullIngest
 from ..declaratives import event_creator, file_creator
 from ..status import Status
 
@@ -384,20 +382,15 @@ def worker(inp, out, plugin_cls, plugin_cfg):
     out : queue.Queue()
         Channel for gathering the results of the ingest requests.
     plugin_cls : `Plugin`, optional
-        An ingest plugin to use. If None (default), nothing will be
-        done, effectively a no-op.
+        An ingest plugin to use.
     plugin_cfg : `dict`, optional
-        Plugin specific configuration. It will be ignored in ``plugin_cls``
-        is None.
+        Plugin specific configuration.
     """
     # Instantiate the ingest plugin.
     #
     # We are doing it here, in the worker, to make sure that any database
     # connections used in the data management system ingestion code will not
     # be shared between threads.
-    if plugin_cls is None:
-        plugin_cls = NullIngest
-        plugin_cfg = dict()
     plugin = plugin_cls(plugin_cfg)
 
     while True:
