@@ -84,7 +84,11 @@ def scan(directory, excludelist=None, **kwargs):
     for dirpath, _, filenames in os.walk(directory):
         for fn in filenames:
             path = os.path.relpath(os.path.join(dirpath, fn), start=directory)
-            if any(re.search(patt, path) for patt in excludelist):
+            matches = [f"'{patt}'" for patt in excludelist
+                       if re.search(patt, path) is not None]
+            if matches:
+                logger.debug(f"{path} was excluded by pattern(s): "
+                             f"{', '.join(matches)}")
                 continue
             yield path
 
@@ -205,7 +209,11 @@ def parse_rsync_logs(directory, excludelist=None,
                         if "<f+++++++++" not in line:
                             continue
                         _, _, path, *_ = line.strip().split()
-                        if any(re.search(patt, path) for patt in excludelist):
+                        matches = [f"'{patt}'" for patt in excludelist
+                                   if re.search(patt, path) is not None]
+                        if matches:
+                            logger.debug(f"{path} was excluded by pattern(s) "
+                                         f"{', '.join(matches)}")
                             continue
                         yield path
                 os.mknod(sentinel)

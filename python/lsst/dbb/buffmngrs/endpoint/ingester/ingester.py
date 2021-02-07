@@ -174,31 +174,63 @@ class Ingester:
                 time.sleep(self.pause)
                 continue
 
-            # Schedule an ingest attempt for each file, except when a file:
-            # (a) is not on the includelist,
-            # (b) is excluded,
-            # (c) is an empty file
+            # Create a request for an ingest attempt for each file:
+            #
+            # (a) whose name matches at least one pattern on the include list,
+            # (b) does not match any pattern on the exclude list,
+            # (c) is not an empty.
+            #
+            # Only the outcome of the last failed check is stored in
+            # the database.
             for rec in records:
                 path = os.path.join(rec.relpath, rec.filename)
 
                 message, status = None, None
-                if not any(re.search(patt, path) for patt in self.includelist):
-                    message = "doesn't match search criteria: not allowed"
-                    status = Status.IGNORED
-                elif any(re.search(patt, path) for patt in self.excludelist):
-                    message = "doesn't match search criteria: excluded"
-                    status = Status.IGNORED
-                else:
-                    try:
-                        sz = os.stat(os.path.join(self.storage, path)).st_size
-                    except FileNotFoundError:
-                        message = "no such file in the storage area"
+                if self.includelist:
+                    matches = [f"'{patt}'" for patt in self.includelist
+                               if re.search(patt, path) is not None]
+                    if not matches:
+                        message = "search criteria not met: " \
+                                  "didn't match any pattern on the " \
+                                  "include list"
+                        status = Status.IGNORED
+                        logger.debug(f"{path}: {message}")
                     else:
-                        if sz == 0:
-                            message = f"file has {sz} bytes"
-                            status = Status.INVALID
-                if message is not None:
-                    logger.warning(f"cannot process '{path}': " + message)
+                        logger.debug(f"{path}: search criteria met; matched "
+                                     f"pattern(s) {', '.join(matches)}")
+                if self.excludelist:
+                    matches = [f"'{patt}'" for patt in self.excludelist
+                               if re.search(patt, path) is not None]
+                    if matches:
+                        message = "search criteria not met: " \
+                                  "matched at least one pattern on the " \
+                                  "exclude list"
+                        status = Status.IGNORED
+                        logger.debug(f"{path}: {message}; matched pattern(s): "
+                                     f"{', '.join(matches)}")
+                try:
+                    sz = os.stat(os.path.join(self.storage, path)).st_size
+                except FileNotFoundError:
+                    message = "no such file in the storage area"
+                    status = Status.INVALID
+                else:
+                    if sz == 0:
+                        message = f"file has {sz} bytes"
+                        status = Status.INVALID
+                if status == Status.INVALID:
+                    logger.warning(f"'{path}':  {message}")
+
+                # If all checks were passed, create a request to make an
+                # ingest attempt and enqueue it for processing.  Otherwise,
+                # create an output message describing the encountered issue
+                # without requesting for the ingest.
+                if status is None:
+                    req = Request(
+                        filepath=os.path.join(self.storage, path),
+                        id=rec.id,
+                    )
+                    requests.put(req)
+                else:
                     rep = Reply(
                         id=rec.id,
                         timestamp=datetime.datetime.now(),
@@ -207,15 +239,6 @@ class Ingester:
                         status=status,
                     )
                     replies.put(rep)
-                    continue
-
-                # Create a request to make an ingest attempt for the file
-                # which passed all search criteria and is not empty.
-                req = Request(
-                    filepath=os.path.join(self.storage, path),
-                    id=rec.id,
-                )
-                requests.put(req)
 
             # Create a pool of workers to ingest the files. The pool will be
             # freed once processing is completed.
@@ -400,7 +423,13 @@ def worker(inp, out, plugin_cls, plugin_cfg):
         start = datetime.datetime.now()
         try:
             plugin.execute(req.filepath)
+        except SyntaxError as exc:
+            logger.exception(exc)
+            exc_msg = traceback.format_exception_only(type(exc), exc)[0]
+            message = exc_msg.strip()
+            status = Status.FAILURE
         except Exception as exc:
+            logger.exception(exc)
             # Find the root cause of the exception as it seems that for both
             # Gen2 and Gen3 Butler the most meaningful error messages tend
             # to be located at the very bottom of the stack trace.
@@ -409,7 +438,6 @@ def worker(inp, out, plugin_cls, plugin_cfg):
             exc_msg = traceback.format_exception_only(type(exc), exc)[0]
             message = exc_msg.strip()
             status = Status.FAILURE
-            logger.error(message)
         else:
             message = None
             status = Status.SUCCESS
