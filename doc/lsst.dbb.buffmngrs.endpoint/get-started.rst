@@ -308,9 +308,6 @@ directory:
         storage: /data/storage
         sources:
           - "2020-12-31"
-        search:
-          excludelist:
-            - \.txt$
 
    .. note::
 
