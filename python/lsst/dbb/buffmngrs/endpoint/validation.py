@@ -91,7 +91,7 @@ properties:
                         enum:
                             - scan
                             - parse_rsync_logs
-                    excludelist:
+                    exclude_list:
                         anyOf:
                             - type: array
                               items:
@@ -253,14 +253,14 @@ properties:
                 required:
                     - name
                     - config
-            includelist:
+            include_list:
                 anyOf:
                     - type: array
                       items:
                           type: string
                       uniqueItems: true
                     - type: "null"
-            excludelist:
+            exclude_list:
                 anyOf:
                     - type: array
                       items:
@@ -363,7 +363,7 @@ properties:
             search:
                 type: object
                 properties:
-                    excludelist:
+                    exclude_list:
                         anyOf:
                             - type: array
                               items:

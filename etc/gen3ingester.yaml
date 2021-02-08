@@ -27,8 +27,8 @@ ingester:
       transfer: symlink
       failFast: true
 
-  includelist: null
-  excludelist: null
+  include_list: null
+  exclude_list: null
   file_status: UNTRIED
   batch_size: 10
   daemon: true

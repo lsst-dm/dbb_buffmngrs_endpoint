@@ -136,12 +136,12 @@ class Ingester:
         self.Event = event_creator(config["tablenames"])
         self.File = file_creator(config["tablenames"])
 
-        self.includelist = config.get("includelist")
-        if self.includelist is None:
-            self.includelist = []
-        self.excludelist = config.get("excludelist")
-        if self.excludelist is None:
-            self.excludelist = []
+        self.include_list = config.get("include_list")
+        if self.include_list is None:
+            self.include_list = []
+        self.exclude_list = config.get("exclude_list")
+        if self.exclude_list is None:
+            self.exclude_list = []
         self.batch_size = config.get("batch_size", 10)
         self.daemon = config.get("daemon", True)
         self.pause = config.get("pause", 1)
@@ -186,8 +186,8 @@ class Ingester:
                 path = os.path.join(rec.relpath, rec.filename)
 
                 message, status = None, None
-                if self.includelist:
-                    matches = [f"'{patt}'" for patt in self.includelist
+                if self.include_list:
+                    matches = [f"'{patt}'" for patt in self.include_list
                                if re.search(patt, path) is not None]
                     if not matches:
                         message = "search criteria not met: " \
@@ -198,8 +198,8 @@ class Ingester:
                     else:
                         logger.debug(f"{path}: search criteria met; matched "
                                      f"pattern(s) {', '.join(matches)}")
-                if self.excludelist:
-                    matches = [f"'{patt}'" for patt in self.excludelist
+                if self.exclude_list:
+                    matches = [f"'{patt}'" for patt in self.exclude_list
                                if re.search(patt, path) is not None]
                     if matches:
                         message = "search criteria not met: " \
