@@ -14,7 +14,7 @@ finder:
     alternative: Delete
   search:
     method: scan
-    blacklist: null
+    exclude_list: null
     date: null
     past_days: 1
     future_days: 1

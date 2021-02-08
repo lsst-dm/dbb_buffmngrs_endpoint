@@ -91,11 +91,12 @@ properties:
                         enum:
                             - scan
                             - parse_rsync_logs
-                    blacklist:
+                    exclude_list:
                         anyOf:
                             - type: array
                               items:
                                   types: string
+                              uniqueItems: true
                             - type: "null"
                     date:
                         anyOf:
@@ -245,11 +246,27 @@ properties:
                                                 - move
                                                 - relsymlink
                                                 - direct
+                                        failFast:
+                                            type: boolean
                                     required:
                                         - root
                 required:
                     - name
                     - config
+            include_list:
+                anyOf:
+                    - type: array
+                      items:
+                          type: string
+                      uniqueItems: true
+                    - type: "null"
+            exclude_list:
+                anyOf:
+                    - type: array
+                      items:
+                          type: string
+                      uniqueItems: true
+                    - type: "null"
             file_status:
                 type: string
             batch_size:
@@ -346,7 +363,7 @@ properties:
             search:
                 type: object
                 properties:
-                    blacklist:
+                    exclude_list:
                         anyOf:
                             - type: array
                               items:

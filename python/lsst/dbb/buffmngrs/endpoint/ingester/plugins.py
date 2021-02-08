@@ -116,30 +116,9 @@ class Gen2Ingest(Plugin):
         ----------
         filename : `str`
             Path to the file.
-
-        Raises
-        ------
-        RuntimeError
-            If any problems where encountered during execution of the LSST
-            task.
         """
-        try:
-            with lsst.log.UsePythonLogging():
-                self.task.ingestFiles(filename)
-        except Exception as ex:
-            # Find the root cause of a exception chain.
-            #
-            # Note
-            # ----
-            # A feeble attempt to address Gen2 Butler's idiosyncrasy when
-            # the most meaningful error message while trying to ingest
-            # image which is already in the repository can be find at the
-            # very bottom of the stack trace.  If other Gen2 Butler errors
-            # doesn't follow this pattern, well, we are all doomed to grep
-            # the log files.
-            while ex.__cause__:
-                ex = ex.__cause__
-            raise RuntimeError(ex)
+        with lsst.log.UsePythonLogging():
+            self.task.ingestFiles(filename)
 
 
 class Gen3Ingest(Plugin):
@@ -180,6 +159,7 @@ class Gen3Ingest(Plugin):
             "output_run": None,
             "processes": 1,
             "transfer": "symlink",
+            "failFast": True,
         }
         self.config.update(config)
 
@@ -195,6 +175,7 @@ class Gen3Ingest(Plugin):
         ingest_class = doImport(self.config["ingest_task"])
         ingest_config = ingest_class.ConfigClass()
         ingest_config.transfer = self.config["transfer"]
+        ingest_config.failFast = self.config["failFast"]
         ingest_config_overrides = ConfigOverrides()
         if self.config["config_file"] is not None:
             ingest_config_overrides.addFileOverride(self.config["config_file"])
@@ -230,16 +211,7 @@ class Gen3Ingest(Plugin):
         ----------
         filename : `str`
             Path to the file.
-
-        Raises
-        ------
-        RuntimeError
-            If any problems where encountered during execution of the LSST
-            task.
         """
-        try:
-            with lsst.log.UsePythonLogging():
-                self.task.run([filename],
-                              run=self.config["output_run"], processes=1)
-        except Exception as ex:
-            raise RuntimeError(ex)
+        with lsst.log.UsePythonLogging():
+            self.task.run([filename],
+                          run=self.config["output_run"], processes=1)

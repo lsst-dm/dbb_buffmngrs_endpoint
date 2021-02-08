@@ -104,7 +104,7 @@ class Finder:
             msg = f"unknown search method: '{method_name}'"
             logger.error(msg)
             raise ValueError(msg)
-        self.search_opts = dict(blacklist=search.get("blacklist", None),
+        self.search_opts = dict(exclude_list=search.get("exclude_list", None),
                                 isodate=search.get("date", None),
                                 past_days=search.get("past_days", 1),
                                 future_days=search.get("future_days", 1),

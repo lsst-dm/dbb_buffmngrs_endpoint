@@ -13,6 +13,10 @@ ingester:
   storage: /data/storage
   plugin:
     name: Gen3Ingest
+
+    # This section contains settings which are passed directly to the
+    # LSST function responsible for creating the actual ingest task.  Only
+    # 'root' is required, others are optional.
     config:
       root: /data/gen3repo
       config: null
@@ -21,6 +25,10 @@ ingester:
       output_run: null
       processes: 1
       transfer: symlink
+      failFast: true
+
+  include_list: null
+  exclude_list: null
   file_status: UNTRIED
   batch_size: 10
   daemon: true

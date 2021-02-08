@@ -33,4 +33,6 @@ class Status(enum.Enum):
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
     UNKNOWN = "UNKNOWN"
+    IGNORED = "IGNORED"
+    INVALID = "INVALID"
     BACKFILL = "BACKFILL"
