@@ -203,10 +203,10 @@ class Backfill:
         fails, notfound, successes, tracked = counts.values()
         total = sum(val for key, val in counts.items() if key != "notfound")
         if total != 0:
-            logger.info("files meeting the search criteria: %s", total)
-            logger.info("failed backfill attempts: %s", fails)
-            logger.info("files already tracked: %s", tracked)
-            logger.info("files backfilled successfully: %s", successes)
+            logger.info("files meeting the search criteria: %i", total)
+            logger.info("failed backfill attempts: %i", fails)
+            logger.info("files already tracked: %i", tracked)
+            logger.info("files backfilled successfully: %i", successes)
             if fails == 0:
                 logger.info("all files matching search criteria were "
                             "backfilled successfully")
