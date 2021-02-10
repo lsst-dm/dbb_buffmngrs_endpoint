@@ -92,7 +92,7 @@ class Backfill:
 
         self.sources = config["sources"]
         for src in [path for path in self.sources if path.startswith("/")]:
-            logger.warning(f"{src} is absolute, should be relative")
+            logger.warning("%s is absolute, should be relative", src)
             if os.path.commonpath([self.storage, src]) != self.storage:
                 msg = f"{src} is not located in the storage area"
                 logger.error(msg)
@@ -111,9 +111,9 @@ class Backfill:
         # corresponding to a given specification remain grouped together.
         sources = [glob(os.path.join(self.storage, s)) for s in self.sources]
         for source in chain(*sources):
-            logger.debug(f"{source}: setting as file source")
+            logger.debug("%s: setting as file source", source)
             if not os.path.exists(source):
-                logger.warning(f"{source}: no such file or directory")
+                logger.warning("%s: no such file or directory", source)
                 counts["notfound"] += 1
                 continue
 
@@ -126,7 +126,7 @@ class Backfill:
                 abspath = os.path.join(source, path)
                 relpath = os.path.relpath(abspath, start=self.storage)
                 dirname, filename = os.path.split(relpath)
-                logger.debug(f"{relpath}: starting processing")
+                logger.debug("%s: starting processing", relpath)
 
                 logger.debug("checking if already tracked")
                 try:
@@ -134,22 +134,22 @@ class Backfill:
                         filter(self.File.relpath == dirname,
                                self.File.filename == filename).first()
                 except SQLAlchemyError as ex:
-                    logger.error(f"{relpath}: cannot check if tracked: {ex}")
-                    logger.debug(f"{relpath}: terminating processing")
+                    logger.error("%s: cannot check if tracked: %s", relpath, ex)
+                    logger.debug("%s: terminating processing", relpath)
                     counts["failure"] += 1
                     continue
                 if record is not None:
-                    logger.info(f"file already tracked (id: {record.id})")
-                    logger.debug(f"{relpath}: terminating processing")
+                    logger.info("file already tracked (id: %s)", record.id)
+                    logger.debug("%s: terminating processing", relpath)
                     counts["tracked"] += 1
                     continue
 
-                logger.debug(f"calculating checksum")
+                logger.debug("calculating checksum")
                 try:
                     checksum = get_checksum(abspath)
                 except FileNotFoundError:
-                    logger.error(f"{relpath}: no such file")
-                    logger.debug(f"{relpath}: terminating processing")
+                    logger.error("%s: no such file", relpath)
+                    logger.debug("%s: terminating processing", relpath)
                     counts["notfound"] += 1
                     continue
 
@@ -172,8 +172,8 @@ class Backfill:
                     self.session.flush()
                 except SQLAlchemyError as ex:
                     self.session.rollback()
-                    logger.error(f"{relpath}: cannot create file entry: {ex}")
-                    logger.debug(f"{relpath}: terminating processing")
+                    logger.error("%s: cannot create file entry: %s", relpath, ex)
+                    logger.debug("%s: terminating processing", relpath)
                     counts["failure"] += 1
                     continue
 
@@ -191,11 +191,11 @@ class Backfill:
                     self.session.commit()
                 except Exception as ex:
                     self.session.rollback()
-                    logger.error(f"{relpath}: cannot create database entries: "
-                                 f"{ex}")
+                    logger.error("%s: cannot create database entries: "
+                                 "%s", relpath, ex)
                     counts["failure"] += 1
                 else:
-                    logger.debug(f"{relpath}: processing completed")
+                    logger.debug("%s: processing completed", relpath)
                     counts["success"] += 1
 
         # Use this list to collect any errors, if any, for future reference.
@@ -203,10 +203,10 @@ class Backfill:
         fails, notfound, successes, tracked = counts.values()
         total = sum(val for key, val in counts.items() if key != "notfound")
         if total != 0:
-            logger.info(f"files meeting the search criteria: {total}")
-            logger.info(f"failed backfill attempts: {fails}")
-            logger.info(f"files already tracked: {tracked}")
-            logger.info(f"files backfilled successfully: {successes}")
+            logger.info("files meeting the search criteria: %s", total)
+            logger.info("failed backfill attempts: %s", fails)
+            logger.info("files already tracked: %s", tracked)
+            logger.info("files backfilled successfully: %s", successes)
             if fails == 0:
                 logger.info("all files matching search criteria were "
                             "backfilled successfully")

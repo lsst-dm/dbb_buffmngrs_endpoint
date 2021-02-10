@@ -226,7 +226,7 @@ class Delete(Action):
         try:
             os.remove(path)
         except OSError as ex:
-            logger.error(f"Cannot remove '{path}': {ex}.")
+            logger.error("Cannot remove '%s': %s.", path, ex)
         else:
             self._fp = None
 

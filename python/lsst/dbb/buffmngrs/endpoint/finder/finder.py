@@ -123,7 +123,7 @@ class Finder:
         while True:
             for relpath in self.search(self.source, **self.search_opts):
                 abspath = os.path.abspath(os.path.join(self.location, relpath))
-                logger.debug(f"starting processing a new file: '{abspath}'")
+                logger.debug("starting processing a new file: '%s'", abspath)
 
                 action_type = "std"
 
@@ -131,8 +131,8 @@ class Finder:
                 try:
                     checksum = get_checksum(abspath)
                 except FileNotFoundError:
-                    logger.error(f"{abspath}: no such file")
-                    logger.debug(f"terminating processing of '{abspath}'")
+                    logger.error("%s: no such file", abspath)
+                    logger.debug("terminating processing of '%s'", abspath)
                     continue
                 filename = os.path.basename(relpath)
                 try:
@@ -140,22 +140,22 @@ class Finder:
                         filter(self.File.checksum == checksum,
                                self.File.filename == filename).all()
                 except SQLAlchemyError as ex:
-                    logger.error(f"cannot check if tracked: {ex}")
-                    logger.debug(f"terminating processing of '{abspath}'")
+                    logger.error("cannot check if tracked: %s", ex)
+                    logger.debug("terminating processing of '%s'", abspath)
                     continue
                 if len(records) != 0:
                     dups = ", ".join(str(rec.id) for rec in records)
-                    logger.error(f"file '{abspath}' already tracked "
-                                 f"(see row(s): {dups})")
+                    logger.error("file '%s' already tracked "
+                                 "(see row(s): %s)", abspath, dups)
                     action_type = "alt"
 
                 action = self.dispatch[action_type]
-                logger.debug(f"executing action: {action}")
+                logger.debug("executing action: %s", action)
                 try:
                     action.execute(abspath)
                 except RuntimeError as ex:
-                    logger.error(f"action failed: {ex}")
-                    logger.debug(f"terminating processing of '{abspath}'")
+                    logger.error("action failed: %s", ex)
+                    logger.debug("terminating processing of '%s'", abspath)
                     continue
 
                 if action_type == "alt":
@@ -172,15 +172,15 @@ class Finder:
                 try:
                     self.session.commit()
                 except Exception as ex:
-                    logger.error(f"creating a database entry for {relpath} "
-                                 f"failed: {ex}; rolling back the changes")
+                    logger.error("creating a database entry for %s "
+                                 "failed: %s; rolling back the changes", relpath, ex)
                     try:
                         action.undo()
                     except RuntimeError as ex:
-                        logger.error(f"cannot undo action: {ex}")
-                    logger.debug(f"terminating processing of '{abspath}'")
+                        logger.error("cannot undo action: %s", ex)
+                    logger.debug("terminating processing of '%s'", abspath)
                 else:
-                    logger.debug(f"processing of '{relpath}' completed")
+                    logger.debug("processing of '%s' completed", relpath)
 
-            logger.debug(f"no new files, next check in {self.pause} sec.")
+            logger.debug("no new files, next check in %i sec.", self.pause)
             time.sleep(self.pause)

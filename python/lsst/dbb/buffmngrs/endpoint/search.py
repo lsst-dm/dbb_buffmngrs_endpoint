@@ -87,8 +87,8 @@ def scan(directory, exclude_list=None, **kwargs):
             matches = [f"'{patt}'" for patt in exclude_list
                        if re.search(patt, path) is not None]
             if matches:
-                logger.debug(f"{path} was excluded by pattern(s): "
-                             f"{', '.join(matches)}")
+                logger.debug("%s was excluded by pattern(s): "
+                             "%s", path, ', '.join(matches))
                 continue
             yield path
 
@@ -177,7 +177,7 @@ def parse_rsync_logs(directory, exclude_list=None,
                 try:
                     status = os.stat(manifest)
                 except FileNotFoundError:
-                    logger.error(f"{manifest}: file not found")
+                    logger.error("%s: file not found", manifest)
                 else:
                     manifest_mtime = datetime.fromtimestamp(status.st_mtime)
                 now = datetime.now()
@@ -198,8 +198,8 @@ def parse_rsync_logs(directory, exclude_list=None,
                     sentinel_mtime = datetime.fromtimestamp(status.st_mtime)
                 if sentinel_mtime is not None:
                     if sentinel_mtime < manifest_mtime:
-                        logger.error(f"{manifest} changed since marked as "
-                                     f"parsed, removing the sentinel")
+                        logger.error("%s changed since marked as "
+                                     "parsed, removing the sentinel", manifest)
                         os.unlink(sentinel)
                     else:
                         continue
@@ -212,8 +212,8 @@ def parse_rsync_logs(directory, exclude_list=None,
                         matches = [f"'{patt}'" for patt in exclude_list
                                    if re.search(patt, path) is not None]
                         if matches:
-                            logger.debug(f"{path} was excluded by pattern(s) "
-                                         f"{', '.join(matches)}")
+                            logger.debug("%s was excluded by pattern(s) "
+                                         "%s", path, ', '.join(matches))
                             continue
                         yield path
                 os.mknod(sentinel)
