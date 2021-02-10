@@ -170,7 +170,7 @@ class Ingester:
                 if not self.daemon:
                     logger.debug(msg + "terminating.")
                     break
-                logger.debug(msg + f"next check in {self.pause} sec.")
+                logger.debug(msg + "next check in %i sec.", self.pause)
                 time.sleep(self.pause)
                 continue
 
@@ -194,10 +194,10 @@ class Ingester:
                                   "didn't match any pattern on the " \
                                   "include list"
                         status = Status.IGNORED
-                        logger.debug(f"{path}: {message}")
+                        logger.debug("%s: %s", path, message)
                     else:
-                        logger.debug(f"{path}: search criteria met; matched "
-                                     f"pattern(s) {', '.join(matches)}")
+                        logger.debug("%s: search criteria met; matched "
+                                     "pattern(s) %s", path, ', '.join(matches))
                 if self.exclude_list:
                     matches = [f"'{patt}'" for patt in self.exclude_list
                                if re.search(patt, path) is not None]
@@ -206,8 +206,8 @@ class Ingester:
                                   "matched at least one pattern on the " \
                                   "exclude list"
                         status = Status.IGNORED
-                        logger.debug(f"{path}: {message}; matched pattern(s): "
-                                     f"{', '.join(matches)}")
+                        logger.debug("%s: %s; matched pattern(s): "
+                                     "%s", path, message, ', '.join(matches))
                 try:
                     sz = os.stat(os.path.join(self.storage, path)).st_size
                 except FileNotFoundError:
@@ -218,7 +218,7 @@ class Ingester:
                         message = f"file has {sz} bytes"
                         status = Status.INVALID
                 if status == Status.INVALID:
-                    logger.warning(f"'{path}':  {message}")
+                    logger.warning("'%s':  %s", path, message)
 
                 # If all checks were passed, create a request to make an
                 # ingest attempt and enqueue it for processing.  Otherwise,
@@ -289,7 +289,7 @@ class Ingester:
                 self.session.commit()
             except SQLAlchemyError as ex:
                 self.session.rollback()
-                logger.error(f"cannot commit updates: {ex}")
+                logger.error("cannot commit updates: %s", ex)
 
             time.sleep(self.pause)
 
@@ -321,13 +321,13 @@ class Ingester:
                                    files_id=id_)
                 self.session.add(event)
         except Exception as ex:
-            logger.error(f"failed to check for new files: {ex}")
+            logger.error("failed to check for new files: %s", ex)
         else:
             try:
                 self.session.commit()
             except SQLAlchemyError as ex:
                 self.session.rollback()
-                logger.error(f"failed to add new files: {ex}")
+                logger.error("failed to add new files: %s", ex)
 
     def _grab(self):
         """Select a group of files for ingestion with a given status.
@@ -375,7 +375,7 @@ class Ingester:
         try:
             records = list(query)
         except SQLAlchemyError as ex:
-            logger.error(f"failed to retrieve files for processing: {ex}")
+            logger.error("failed to retrieve files for processing: %s", ex)
         else:
             for rec in records:
                 event = self.Event(status=Status.PENDING,
@@ -387,7 +387,7 @@ class Ingester:
             except SQLAlchemyError as ex:
                 records.clear()
                 self.session.rollback()
-                logger.error(f"cannot commit updates: {ex}")
+                logger.error("cannot commit updates: %s", ex)
         return records
 
 
