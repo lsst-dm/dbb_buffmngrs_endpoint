@@ -462,6 +462,82 @@ component.
 
 Logging options for the **ingester** are exactly the same as for the **finder**.
 
+Backfill configuration file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following example file shows all available configuration settings and their
+default values (where applicable) for DBB endpoint manager **backfill**
+component.
+
+.. code-block:: yaml
+
+   database:
+     engine: <connection string>
+     tablenames:
+       file:
+         schema: null
+         table: <file table>
+       event:
+         schema: null
+         table: <event table>
+     echo: false
+     pool_class: QueuePool
+   backfill:
+     storage: <storage area>
+     sources:
+       - <subdirectory>
+     search:
+       exclude_list: null
+   logging:
+     file: null
+     format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
+     level: INFO
+
+``database`` options
+""""""""""""""""""""
+
+Database options for the **backfill** are exactly the same as for the
+**ingester**.
+
+``backfill`` options
+""""""""""""""""""""
+
+``backfill.storage``
+    *Type*: string
+
+    Absolute path of the storage area.
+
+``backfill.sources``
+    *Type*: sequence
+
+    List of paths, i.e., files and/or directories.
+
+    All paths should be specified relative to the storage area.
+
+    Unix style pathname pattern expansion when specifying sources. Tilde
+    expansion is not supported though.
+
+    To prevent Python YAML parser from accidental conversion of strings like
+    ``2021-01-01`` into ``datetime`` objects, enclose them in quotes.
+
+``backfill.search.exclude_list``
+    *Type*: sequence
+
+    *Default*: null
+
+    List of patters (regular expressions).
+
+    A file path will be excluded (effectively ignored by the backfill) if it
+    *matches* any pattern on that list.
+
+    By default, no file is ignored.
+
+``logging`` options
+"""""""""""""""""""
+
+Logging options for the **backfill** are exactly the same as for the
+**ingester**.
+
 .. _PostgreSQL: https://www.postgresql.org
 .. _SQLAlchemy: https://www.sqlalchemy.org
 .. _YAML: https://yaml.org
