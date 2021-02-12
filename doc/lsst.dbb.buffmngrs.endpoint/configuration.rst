@@ -143,7 +143,7 @@ default values (where applicable) for DBB endpoint manager **finder** component.
 
     *Default*: null
 
-    List of patters (regular expressions) used to exclude unwanted files from
+    List of patterns (regular expressions) used to exclude unwanted files from
     the search based on their path.
 
     A file path will be excluded (effectively ignored by the finder) if it
@@ -421,11 +421,12 @@ component.
     Status of files for which the ingester will be making ingest attempts.
 
     The viable values are:
-    - UNTRIED,
-    - RERUN,
-    - FAILURE,
-    - IGNORED,
-    - BACKFILL.
+
+    * UNTRIED,
+    * RERUN,
+    * FAILURE,
+    * IGNORED,
+    * BACKFILL.
 
 ``ingester.plugin.batch_size``
     *Type*: integer
@@ -525,7 +526,7 @@ Database options for the **backfill** are exactly the same as for the
 
     *Default*: null
 
-    List of patters (regular expressions).
+    List of patterns (regular expressions).
 
     A file path will be excluded (effectively ignored by the backfill) if it
     *matches* any pattern on that list.
