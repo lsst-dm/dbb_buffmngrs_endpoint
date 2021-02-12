@@ -79,6 +79,9 @@ default values (where applicable) for DBB endpoint manager **finder** component.
 
     When enabled, SQLAlchemy will log all generated SQL.
 
+    The generated SQL will be written to the file specified by ``logging.file``
+    (stdout, be default).
+
 ``database.pool_class``
     *Type*: string
 
