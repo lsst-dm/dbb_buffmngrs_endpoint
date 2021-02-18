@@ -1,17 +1,17 @@
 database:
-  engine: "postgres://tester:password@localhost:5432/test"
+  engine: <connection string>
   tablenames:
     file:
       schema: null
-      table: loc_inst_files
+      table: <file table>
   echo: false
   pool_class: QueuePool
 finder:
-  source: /data/buffer
-  storage: /data/storage
+  source: <file source>
+  storage: <storage area>
   actions:
-    standard: Move
-    alternative: Delete
+    standard: null
+    alternative: null
   search:
     method: scan
     exclude_list: null

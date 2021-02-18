@@ -20,6 +20,7 @@ Using dbb.buffmngrs.endpoint
    :maxdepth: 1
 
    get-started
+   configuration
 
 .. _lsst.dbb.buffmngrs.endpoint-contributing:
 

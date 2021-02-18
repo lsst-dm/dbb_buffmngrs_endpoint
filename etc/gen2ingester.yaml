@@ -1,24 +1,29 @@
 database:
-  engine: "postgres://tester:password@localhost:5432/test"
+  engine: <connection string>
   tablenames:
     file:
       schema: null
-      table: loc_inst_files
+      table: <file table>
     event:
       schema: null
-      table: loc_inst_gen2_file_events
+      table: <event table>
   echo: false
   pool_class: QueuePool
 ingester:
-  storage: /data/storage
+  storage: <storage area>
   plugin:
-    name: Gen2Ingest
+    name: Gen2Ingester
 
     # This section contains settings which are passed directly to the
-    # LSST function responsible for creating the actual ingest task.  Only
-    # 'root' is required, others are optional.
+    # LSST function responsible for creating the actual ingest task.
     config:
-      root: /data/gen2repo
+
+      # Gen2Ingest specific options.
+      #
+      # Note
+      # ----
+      # Only 'root' is required, others are optional.
+      root: <dataset repository>
       dryrun: false
       mode: link
       create: false
