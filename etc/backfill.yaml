@@ -1,18 +1,18 @@
 database:
-  engine: "postgres://tester:password@localhost:5432/test"
+  engine: <connection string>
   tablenames:
     file:
       schema: null
-      table: loc_inst_files
+      table: <file table>
     event:
       schema: null
-      table: loc_inst_gen2_file_events
+      table: <event table>
   echo: false
   pool_class: QueuePool
 backfill:
-  storage: /data/storage
+  storage: <storage area>
   sources:
-    - "subdir"
+    - <file source>
   search:
     exclude_list: null
 logging:

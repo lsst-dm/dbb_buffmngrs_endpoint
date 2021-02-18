@@ -85,7 +85,7 @@ def start(filename, dump, validate):
     module = importlib.import_module(".actions", package=package_name)
     for type_, name in config["actions"].items():
         if name is None:
-            name = "Null"
+            name = "Noop"
         try:
             class_ = getattr(module, name)
         except AttributeError as ex:

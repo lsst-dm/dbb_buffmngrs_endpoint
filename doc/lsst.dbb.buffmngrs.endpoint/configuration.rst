@@ -1,5 +1,30 @@
+.. _config:
+
 Configuration files
 -------------------
+
+.. _config-overview:
+
+Overview
+^^^^^^^^
+
+This document describes configuration settings for DBB endpoint buffer manager
+which is responsible for ingesting files into different data management
+systems.
+
+.. note::
+
+   For more information about DBB buffer managers, see `DMTN-154`_.
+
+It is divided into sections describing configuration settings for each endpoint
+manager's component.  Each section contains an example file with all available
+configuration settings and their default values followed by descriptions of the
+settings.
+
+Many of these configuration values are similar across different components and
+are only fully described in the first instance.
+
+.. _config-format:
 
 File format
 ^^^^^^^^^^^
@@ -7,49 +32,33 @@ File format
 Data Backbone (DBB) endpoint buffer manager configuration files use `YAML`_
 format.
 
+.. note::
+
+   A friendly reminder, in YAML ``null`` represents the lack of a value. This
+   is typically bound to a native null-like value (e.g. ``None`` in Python).
+
+.. _finder-config:
+
 Finder configuration file
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following example file shows all available configuration settings and their
 default values (where applicable) for DBB endpoint manager **finder** component.
 
-.. code-block:: yaml
+.. literalinclude:: ../../etc/finder.yaml
+   :language: yaml
 
-  database:
-    engine: <connection string>
-    tablenames:
-      file:
-        schema: null
-        table: <file table>
-    echo: false
-    pool_class: QueuePool
-  finder:
-    source: <file source location>
-    storage: <storage area>
-    actions:
-      standard: Move
-      alternative: Delete
-    search:
-      method: scan
-      exclude_list: null
-      date: null
-      past_days: 1
-      future_days: 1
-    pause: 1
-  logging:
-    file: null
-    format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
-    level: INFO
+.. _finder-config-db:
 
-``database`` options
-""""""""""""""""""""
+``database`` settings
+"""""""""""""""""""""
 
 ``database.engine``
     *Type*: string
 
     Database URL specifying the connection to the database back-end.
 
-    Refer to SQLAlchemy `documentation`__ to find out how to construct a viable
+    Refer to SQLAlchemy `documentation`__ to find out how to construct viable
     database URLs.
 
 .. __: https://docs.sqlalchemy.org/en/13/core/engines.html#engine-configuration
@@ -61,8 +70,8 @@ default values (where applicable) for DBB endpoint manager **finder** component.
     *Default*: null
 
     Database schema with the table where the Finder stores information
-    about files it discovers.  When ``null``, the default database schema will
-    be used (e.g. ``public`` for `PostgreSQL`_).
+    about files it discovers.  When ``null``, the finder will use the default
+    schema provided by the database connection.
 
 ``database.tablenames.file.table``
     *Type*: string
@@ -75,7 +84,7 @@ default values (where applicable) for DBB endpoint manager **finder** component.
 
     *Default*: False
 
-    Activates `SQLAlchemy` login.
+    Activates `SQLAlchemy` logging.
 
     When enabled, SQLAlchemy will log all generated SQL.
 
@@ -92,16 +101,18 @@ default values (where applicable) for DBB endpoint manager **finder** component.
 
 .. __: https://docs.sqlalchemy.org/en/13/core/pooling.html#module-sqlalchemy.pool
 
+.. _finder-config-finder:
 
-``finder`` options
-""""""""""""""""""""
+
+``finder`` settings
+"""""""""""""""""""
 
 ``finder.source``
     *Type*: string
 
-    Location which Finder needs to monitor for new files.
+    File storage location which Finder needs to monitor for new files.
     
-    It can be either the DBB buffer or a directory with transfer logs (for
+    It can be either the DBB BM buffer or a directory with transfer logs (for
     rsync based file transfers).
 
 ``finder.storage``
@@ -113,23 +124,27 @@ default values (where applicable) for DBB endpoint manager **finder** component.
 ``finder.actions.standard``
     *Type*: string
 
+    *Default*: null
+
     Action to perform after creating a database entry for a file.
 
     Set it to ``Move`` for files arriving to the DBB buffer to instruct the
     finder to move files from the buffer to the storage area.
 
-    For rsync based transfer, set it to ``Noop`` as the files are placed
-    directly to the storage area.
+    For rsync-based transfer, keep the default value or set it explicitly to
+    ``Noop`` as the files are placed directly to the storage area by the
+    transfer process.
 
 ``finder.actions.alternative``
     *Type*: string
 
+    *Default*: null
+
     Action to perform when a file is already tracked, i.e., there is already a
     file with identical checksum and filename in the storage area.
 
-    Set it to ``Delete`` to remove the duplicates or ``Noop`` to leave them
-    alone.
-
+    Set it to ``Delete`` to remove the duplicates. To leave the duplicates
+    alone, keep the default value or set it explicitly to ``Noop``.
 
 ``finder.search.method``
     *Type*: string
@@ -138,8 +153,8 @@ default values (where applicable) for DBB endpoint manager **finder** component.
 
     Valid values are ``scan`` and ``parse_rsync_logs``.
 
-    Use ``scan`` to instruct the finder to watch the DBB buffer.  For rsync
-    based transfers, use ``parse_rsync_logs``.
+    Use ``scan`` to instruct the finder to watch the DBB buffer.  For
+    rsync-based transfers, use ``parse_rsync_logs``.
 
 ``finder.search.exclude_list``
     *Type*: sequence
@@ -164,8 +179,8 @@ default values (where applicable) for DBB endpoint manager **finder** component.
     It instructs the finder to look for and parse transfer logs from ``[date -
     past_days, date + future_days]`` time range.
 
-    If set to ``null``, the finder will use the current date and it will keep
-    updating it with passing time.
+    If set to ``null``, the finder will use the current date at the beginning
+    of each discovery cycle.
 
     This option is only relevant if ``parse_rsync_logs`` is selected as the
     file discovery method.  Otherwise, it will be ignored.
@@ -198,8 +213,8 @@ default values (where applicable) for DBB endpoint manager **finder** component.
 
     *Default*: 60
 
-    Time (in seconds) that need to pass from log's last modification before it
-    will be considered fully transferred.
+    Time (in seconds) that need to pass from transfer log's last modification
+    before it will be considered fully transferred.
 
     This option is only relevant if ``parse_rsync_logs`` is selected as the
     file discovery method.  Otherwise, it will be ignored.
@@ -211,8 +226,10 @@ default values (where applicable) for DBB endpoint manager **finder** component.
 
     Delay (in seconds) between two consecutive discovery-update cycles.
     
+.. _finder-config-logging:
+
 ``logging`` options
-""""""""""""""""""""
+"""""""""""""""""""
 
 ``logging.file``
     *Type*: string
@@ -246,130 +263,50 @@ default values (where applicable) for DBB endpoint manager **finder** component.
     The valid verbosity levels, ordered by increasing severity, are DEBUG,
     INFO, WARNING, ERROR, CRITICAL.
 
+.. _ingester-config:
+
 Ingester configuration file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following example file shows all available configuration settings and their
 default values (where applicable) for DBB endpoint manager **ingester**
-component.
+component using Gen2 plugin.
 
-.. code-block:: yaml
+.. literalinclude:: ../../etc/gen2ingester.yaml
+   :language: yaml
 
-   database:
-     engine: <connection string>
-     tablenames:
-     file:
-       schema: null
-       table: <file table>
-     event:
-       schema: null
-       table: <event table>
-     echo: false
-     pool_class: QueuePool
-   ingester:
-     storage: <storage area>
-     plugin:
-       name: <plugin name>
-       config:
+.. note::
 
-         # Gen2Ingest specific options.
-         root: <dataset repository>
-         dryrun: false
-         mode: link
-         create: false
-         ignoreIngested: false
+   The example shows content of the ``etc/gen2ingester.yaml``. For example
+   configuration of the ingester using the Gen3 plugin, see
+   ``etc/gen3ingester.yaml`` instead.
 
-         # Gen3Ingest specific options.
-         root: <dataset repository>
-         config: null
-         config_file: null
-         ingest_task: lsst.obs.base.RawIngestTask
-         output_run: null
-         processes: 1
-         transfer: symlink
-         failFast: true
+.. _ingester-config-db:
 
-     include_list: null
-     exclude_list: null
-     file_status: UNTRIED
-     batch_size: 10
-     daemon: true
-     num_threads: 1
-     pause: 1
-   logging:
-     file: null
-     format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
-     level: INFO
+``database`` settings
+"""""""""""""""""""""
 
-``database`` options
-""""""""""""""""""""
+Database settings for the **ingester** are *almost* indentical to
+:ref:`finder's <finder-config-db>`.
 
-``database.engine``
-    *Type*: string
+The only difference is that you need to include additional subsection, called
+``event``, in the section ``tablenames`` which specifies the table where the
+**ingester** should store information about file events.
 
-    Database URL specifying the connection to the database back-end.
+Event table specification looks exactly like file table specification (see
+`this <finder-config-db>` section for details).
 
-    Refer to SQLAlchemy `documentation`__ to find out how to construct a viable
-    database URLs.
+.. _ingester-config-ingester:
 
-.. __: https://docs.sqlalchemy.org/en/13/core/engines.html#engine-configuration
-
-
-``database.tablenames.file.schema``
-    *Type*: string
-
-    *Default*: null
-
-    Database schema with the table where the finder stores information
-    about files it discovers.  When ``null``, the default database schema will
-    be used (e.g. ``public`` for `PostgreSQL`_).
-
-``database.tablenames.file.table``
-    *Type*: string
-
-    Database table where the Finder stores information about files it
-    discovers.
-
-``database.tablenames.events.schema``
-    *Type*: string
-
-    *Default*: null
-
-    Database schema with the table where the ingester stores information
-    about file events.  When ``null``, the default database schema will
-    be used (e.g. ``public`` for `PostgreSQL`_).
-
-``database.tablenames.events.table``
-    *Type*: string
-
-    Database table where the ingester stores information about file events.
-
-``database.echo``
-    *Type*: boolean
-
-    *Default*: False
-
-    Activates `SQLAlchemy` login.
-
-    When enabled, SQLAlchemy will log all generated SQL.
-
-``database.pool_class``
-    *Type*: string
-
-    *Default*: QueuePool
-
-    Connection pooling method.  Refer to SQLAlchemy `documentation`__ for
-    further information.
-
-.. __: https://docs.sqlalchemy.org/en/13/core/pooling.html#module-sqlalchemy.pool
-
-``ingester`` options
-""""""""""""""""""""
+``ingester`` settings
+"""""""""""""""""""""
 
 ``ingester.storage``
     *Type*: string
 
     Absolute path of the storage area.
+    
+    Must be the same path used by the finder.
 
 ``ingester.plugin.name``
     *Type*: string
@@ -431,12 +368,15 @@ component.
     * IGNORED,
     * BACKFILL.
 
+    Values are case-sensitive.
+
 ``ingester.plugin.batch_size``
     *Type*: integer
 
     *Default*: 10
 
-    Number of files which an ingester attempt to ingest in a single session.
+    Number of files which an ingester attempts to ingest in a single cycle
+    before allocating next batch of files to ingest.
 
 ``ingester.plugin.num_threads``
     *Type*: integer
@@ -459,12 +399,17 @@ component.
 
     *Default*: 1
 
-    Delay (in seconds) between two consecutive discovery-ingest sessions.
+    Delay (in seconds) between two consecutive discovery-ingest cycles.
+
+.. _ingester-config-logging:
 
 ``logging`` options
 """""""""""""""""""
 
-Logging options for the **ingester** are exactly the same as for the **finder**.
+Logging options for the **ingester** are exactly the same as for the
+:ref:`finder <finder-config-logging>`.
+
+.. _backfill-config:
 
 Backfill configuration file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -473,38 +418,22 @@ The following example file shows all available configuration settings and their
 default values (where applicable) for DBB endpoint manager **backfill**
 component.
 
-.. code-block:: yaml
+.. literalinclude:: ../../etc/backfill.yaml
+   :language: yaml
 
-   database:
-     engine: <connection string>
-     tablenames:
-       file:
-         schema: null
-         table: <file table>
-       event:
-         schema: null
-         table: <event table>
-     echo: false
-     pool_class: QueuePool
-   backfill:
-     storage: <storage area>
-     sources:
-       - <subdirectory>
-     search:
-       exclude_list: null
-   logging:
-     file: null
-     format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
-     level: INFO
+.. _backfill-config-db:
 
-``database`` options
-""""""""""""""""""""
+``database`` settings
+"""""""""""""""""""""
 
 Database options for the **backfill** are exactly the same as for the
-**ingester**.
+:ref:`ingester <ingester-config-db>`.
 
-``backfill`` options
-""""""""""""""""""""
+.. _backfill-config-backfill:
+
+
+``backfill`` settings
+"""""""""""""""""""""
 
 ``backfill.storage``
     *Type*: string
@@ -536,12 +465,16 @@ Database options for the **backfill** are exactly the same as for the
 
     By default, no file is ignored.
 
+.. _backfill-config-logging:
+
 ``logging`` options
 """""""""""""""""""
 
 Logging options for the **backfill** are exactly the same as for the
-**ingester**.
+:ref:`finder <finder-config-logging>` and :ref:`ingester
+<ingester-config-logging>`.
 
+.. _DMTN-154: https://dmtn-154.lsst.io
 .. _PostgreSQL: https://www.postgresql.org
 .. _SQLAlchemy: https://www.sqlalchemy.org
 .. _YAML: https://yaml.org
