@@ -26,7 +26,7 @@ import time
 from sqlalchemy.exc import SQLAlchemyError
 from ..declaratives import file_creator
 from ..search import search_methods
-from ..utils import get_checksum
+from ..utils import get_file_attributes
 
 
 __all__ = ["Finder"]
@@ -129,7 +129,7 @@ class Finder:
 
                 logger.debug("checking if already tracked")
                 try:
-                    checksum = get_checksum(abspath)
+                    checksum, status = get_file_attributes(abspath)
                 except FileNotFoundError:
                     logger.error("%s: no such file", abspath)
                     logger.debug("terminating processing of '%s'", abspath)
@@ -142,6 +142,7 @@ class Finder:
                 except SQLAlchemyError as ex:
                     logger.error("cannot check if tracked: %s", ex)
                     logger.debug("terminating processing of '%s'", abspath)
+                    self.session.rollback()
                     continue
                 if len(records) != 0:
                     dups = ", ".join(str(rec.id) for rec in records)
@@ -167,6 +168,7 @@ class Finder:
                     relpath=os.path.relpath(dirname, start=self.storage),
                     filename=basename,
                     checksum=checksum,
+                    size_bytes=status.st_size,
                 )
                 self.session.add(entry)
                 try:

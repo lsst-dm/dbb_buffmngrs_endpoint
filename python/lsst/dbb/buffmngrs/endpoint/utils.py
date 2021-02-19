@@ -21,6 +21,7 @@
 import hashlib
 import importlib
 import logging
+import os
 import subprocess
 import jsonschema
 import yaml
@@ -34,6 +35,7 @@ __all__ = [
     "find_missing_tables",
     "fully_qualify_tables",
     "get_checksum",
+    "get_file_attributes",
     "setup_connection",
     "setup_logging",
     "validate_config",
@@ -201,6 +203,27 @@ def get_checksum(path, method='blake2', block_size=4096):
         for chunk in iter(lambda: f.read(block_size), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
+
+
+def get_file_attributes(path):
+    """Retrieve file attributes.
+
+    Parameters
+    ----------
+    path : `str`
+        Path to the file.
+
+    Returns
+    -------
+    checksum : `str`
+        File checksum.
+    status : `os.stat_result`
+        Status of a file, an object whose attributes correspond roughly to
+        the members of the stat structure.
+    """
+    checksum = get_checksum(path)
+    status = os.stat(path)
+    return checksum, status
 
 
 def setup_logging(options=None):

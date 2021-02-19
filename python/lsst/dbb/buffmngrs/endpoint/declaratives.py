@@ -30,7 +30,6 @@ from sqlalchemy import (
     String,
     Text)
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
 from .status import Status
 
 
@@ -63,6 +62,7 @@ def file_creator(orms):
         "relpath": Column(String, nullable=False),
         "filename": Column(String, nullable=False, unique=True),
         "checksum": Column(String, nullable=False, unique=True),
+        "size_bytes": Column(BigInteger, nullable=False),
         "added_on": Column(DateTime, nullable=False, default=datetime.now),
     }
     return type("File", (Base,), attributes)
