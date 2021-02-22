@@ -172,7 +172,8 @@ class Backfill:
                     self.session.flush()
                 except SQLAlchemyError as ex:
                     self.session.rollback()
-                    logger.error("%s: cannot create file entry: %s", relpath, ex)
+                    logger.error("%s: cannot create file entry: %s",
+                                 relpath, ex)
                     logger.debug("%s: terminating processing", relpath)
                     counts["failure"] += 1
                     continue

@@ -173,7 +173,8 @@ class Finder:
                     self.session.commit()
                 except Exception as ex:
                     logger.error("creating a database entry for %s "
-                                 "failed: %s; rolling back the changes", relpath, ex)
+                                 "failed: %s; rolling back the changes",
+                                 relpath, ex)
                     try:
                         action.undo()
                     except RuntimeError as ex:
