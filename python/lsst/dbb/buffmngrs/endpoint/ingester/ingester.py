@@ -120,9 +120,9 @@ class Ingester:
             if not records:
                 msg = f"no files with status '{self.status}' to process, "
                 if not self.daemon:
-                    logger.debug(msg + "terminating.")
+                    logger.debug("%s terminating.", msg)
                     break
-                logger.debug(msg + f"next check in {self.pause} sec.")
+                logger.debug("%s next check in %i sec.", msg, self.pause)
                 time.sleep(self.pause)
                 continue
 
