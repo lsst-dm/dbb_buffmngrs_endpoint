@@ -168,9 +168,9 @@ class Ingester:
             if not records:
                 msg = f"no files with status '{self.status}' to process, "
                 if not self.daemon:
-                    logger.debug(msg + "terminating.")
+                    logger.debug("%s terminating.", msg)
                     break
-                logger.debug(msg + "next check in %i sec.", self.pause)
+                logger.debug("%s next check in %i sec.", msg, self.pause)
                 time.sleep(self.pause)
                 continue
 
@@ -197,7 +197,7 @@ class Ingester:
                         logger.debug("%s: %s", path, message)
                     else:
                         logger.debug("%s: search criteria met; matched "
-                                     "pattern(s) %s", path, ', '.join(matches))
+                                    "pattern(s): %s", path, ', '.join(matches))
                 if self.exclude_list:
                     matches = [f"'{patt}'" for patt in self.exclude_list
                                if re.search(patt, path) is not None]
@@ -206,8 +206,8 @@ class Ingester:
                                   "matched at least one pattern on the " \
                                   "exclude list"
                         status = Status.IGNORED
-                        logger.debug("%s: %s; matched pattern(s): "
-                                     "%s", path, message, ', '.join(matches))
+                        logger.debug("%s: %s; matched pattern(s): %s",
+                                     path, message, ', '.join(matches))
                 try:
                     sz = os.stat(os.path.join(self.storage, path)).st_size
                 except FileNotFoundError:
