@@ -43,18 +43,12 @@ def finder():
 @click.option("--dump/--no-dump", default=True,
               help="Log runtime environment and configuration "
                    "(ignored if severity is set to WARNING and higher).")
-@click.option("--validate/--no-validate", default=False,
-              help="Validate configuration before starting the service.")
 @click.argument("filename", type=click.Path(exists=True))
-def start(filename, dump, validate):
+def start(filename, dump):
     """Starts a finder using a configuration from FILENAME.
     """
     with open(filename) as f:
         configuration = yaml.safe_load(f)
-    if validate:
-        schema = yaml.safe_load(FINDER)
-        validate_config(configuration, schema)
-        return
 
     config = configuration.get("logging", None)
     setup_logging(options=config)
@@ -107,3 +101,14 @@ def start(filename, dump, validate):
     logger.info("starting Finder...")
     component = Finder(finder_config)
     component.run()
+
+
+@finder.command()
+@click.argument("filename", type=click.Path(exists=True))
+def validate(filename):
+    """Validate configuration in the FILENAME.
+    """
+    with open(filename) as f:
+        configuration = yaml.safe_load(f)
+    schema = yaml.safe_load(FINDER)
+    validate_config(configuration, schema)
