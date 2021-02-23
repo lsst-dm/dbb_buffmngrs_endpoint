@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 def ingester():
     """Manage file ingestion to a data management system.
     """
-    pass
 
 
 @ingester.command()

@@ -36,7 +36,6 @@ logger = logging.getLogger(__name__)
 def finder():
     """Manage file discovery at a specified location.
     """
-    pass
 
 
 @finder.command()

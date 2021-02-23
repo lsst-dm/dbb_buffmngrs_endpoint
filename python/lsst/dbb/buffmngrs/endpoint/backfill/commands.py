@@ -35,7 +35,6 @@ logger = logging.getLogger(__name__)
 def backfill():
     """Populate the database with entries for historical files.
     """
-    pass
 
 
 @backfill.command()

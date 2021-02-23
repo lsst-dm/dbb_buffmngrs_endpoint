@@ -46,13 +46,11 @@ class Action(abc.ABC):
         path : `str`
             Path to the file.
         """
-        pass
 
     @abc.abstractmethod
     def undo(self):
         """Roll action back.
         """
-        pass
 
 
 class Macro(Action):
@@ -122,10 +120,8 @@ class Plugin(abc.ABC):
     def execute(self, path):
         """Run plugin.
         """
-        pass
 
     @abc.abstractmethod
     def version(self):
         """Return the version of the data management system ingest software.
         """
-        pass
