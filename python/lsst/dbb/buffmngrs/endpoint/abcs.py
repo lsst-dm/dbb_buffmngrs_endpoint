@@ -100,7 +100,7 @@ class Macro(Action):
         self._fp = path
         for a in self._actions:
             a.execute(self._fp)
-            self._fp = a.filepath
+            self._fp = a.path
 
     def undo(self):
         """Roll back actions performed on the file.
