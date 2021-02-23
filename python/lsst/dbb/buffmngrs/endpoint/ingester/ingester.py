@@ -18,6 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Component responsible for ingesting files to a data management system.
+"""
 import datetime
 import logging
 import os

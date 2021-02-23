@@ -18,6 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Command line interface for the DBB endpoint buffer manager.
+"""
 import click
 import logging
 from .backfill.commands import backfill
