@@ -111,16 +111,16 @@ class Gen2Ingest(Plugin):
         """
         return self._version
 
-    def execute(self, filename):
+    def execute(self, path):
         """Make an attempt to ingest the file.
 
         Parameters
         ----------
-        filename : `str`
+        path : `str`
             Path to the file.
         """
         with lsst.log.UsePythonLogging():
-            self.task.ingestFiles(filename)
+            self.task.ingestFiles(path)
 
 
 class Gen3Ingest(Plugin):
