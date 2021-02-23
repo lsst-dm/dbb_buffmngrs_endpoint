@@ -78,7 +78,7 @@ def start(filename, dump):
     plugin_name = config["plugin"]["name"]
     try:
         class_ = getattr(module, plugin_name)
-    except AttributeError as ex:
+    except AttributeError:
         msg = f"Unknown ingest plugin '{plugin_name}'."
         logger.error(msg)
         raise RuntimeError(msg)

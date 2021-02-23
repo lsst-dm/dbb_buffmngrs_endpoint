@@ -82,7 +82,7 @@ def start(filename, dump):
             name = "Noop"
         try:
             class_ = getattr(module, name)
-        except AttributeError as ex:
+        except AttributeError:
             msg = f"Unknown file action: '{name}'."
             logger.error(msg)
             raise RuntimeError(msg)
