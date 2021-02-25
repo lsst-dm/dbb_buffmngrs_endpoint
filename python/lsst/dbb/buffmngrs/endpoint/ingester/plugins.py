@@ -177,7 +177,13 @@ class Gen3Ingest(Plugin):
         ingest_class = doImport(self.config["ingest_task"])
         ingest_config = ingest_class.ConfigClass()
         ingest_config.transfer = self.config["transfer"]
-        ingest_config.failFast = self.config["failFast"]
+
+        # TODO: A temporary hack to make the plugin usable with LSST stack
+        #  prior to w_2021_05. Remove the if statement once a later version is
+        #  in use.
+        if self.config["failFast"] is not None:
+            ingest_config.failFast = self.config["failFast"]
+
         ingest_config_overrides = ConfigOverrides()
         if self.config["config_file"] is not None:
             ingest_config_overrides.addFileOverride(self.config["config_file"])
