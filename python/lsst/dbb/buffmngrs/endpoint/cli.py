@@ -21,7 +21,9 @@
 """Command line interface for the DBB endpoint buffer manager.
 """
 import logging
+
 import click
+
 from .backfill.commands import backfill
 from .finder.commands import finder
 from .ingester.commands import ingester

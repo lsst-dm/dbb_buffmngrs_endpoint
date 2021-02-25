@@ -22,11 +22,13 @@
 """
 import logging
 import sys
+
 import lsst.log
 from lsst.daf.butler import Butler
 from lsst.pipe.base.configOverrides import ConfigOverrides
 from lsst.pipe.tasks.ingest import IngestTask
 from lsst.utils import doImport
+
 from ..abcs import Plugin
 
 

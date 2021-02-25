@@ -22,8 +22,10 @@
 """
 import importlib
 import logging
+
 import click
 import yaml
+
 from .finder import Finder
 from ..utils import dump_all, setup_connection, setup_logging, validate_config
 from ..validation import FINDER

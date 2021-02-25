@@ -21,6 +21,7 @@
 """Functions allowing for dynamic creation of object relational mappers.
 """
 from datetime import datetime
+
 from sqlalchemy import (
     BigInteger,
     Column,
@@ -32,6 +33,7 @@ from sqlalchemy import (
     String,
     Text)
 from sqlalchemy.ext.declarative import declarative_base
+
 from .status import Status
 
 

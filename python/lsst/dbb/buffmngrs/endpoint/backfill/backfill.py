@@ -25,8 +25,10 @@ import logging
 import os
 from glob import glob
 from itertools import chain
+
 from sqlalchemy.exc import SQLAlchemyError
 from ..declaratives import event_creator, file_creator
+
 from ..search import scan
 from ..status import Status
 from ..utils import get_file_attributes
