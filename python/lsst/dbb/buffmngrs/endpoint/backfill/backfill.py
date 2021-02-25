@@ -29,7 +29,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from ..declaratives import event_creator, file_creator
 from ..search import scan
 from ..status import Status
-from ..utils import get_checksum
+from ..utils import get_file_attributes
 
 
 __all__ = ["Backfill"]
@@ -144,9 +144,9 @@ class Backfill:
                     counts["tracked"] += 1
                     continue
 
-                logger.debug("calculating checksum")
+                logger.debug("getting file attributes")
                 try:
-                    checksum = get_checksum(abspath)
+                    checksum, status = get_file_attributes(abspath)
                 except FileNotFoundError:
                     logger.error("%s: no such file", relpath)
                     logger.debug("%s: terminating processing", relpath)
@@ -163,6 +163,7 @@ class Backfill:
                     relpath=dirname,
                     filename=filename,
                     checksum=checksum,
+                    size_bytes=status.st_size
                 )
                 self.session.add(file)
 
