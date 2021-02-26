@@ -223,8 +223,8 @@ class Ingester:
                     message = f"no such file in the storage area"
                     status = Status.INVALID
                 if message is not None:
-                    logger.debug("%s: message: '%s'", path, message)
-                    logger.debug("%s: status: '%s'", path, status.value)
+                    logger.debug("%s: message: '%s'; status: '%s'",
+                                 path, message, status.value)
 
                 # If all checks were passed, create a request to make an
                 # ingest attempt and enqueue it for processing.  Otherwise,

@@ -181,8 +181,8 @@ class Gen3Ingest(Plugin):
         ingest_config.transfer = self.config["transfer"]
 
         # TODO: A temporary hack to make the plugin usable with LSST stack
-        #  prior to w_2021_05. Remove the if statement once a later version is
-        #  in use.
+        #  prior to w_2021_05. Remove the if statement once a the
+        #  pre-failFast stack versions are old enough to never be used again
         if self.config["failFast"] is not None:
             ingest_config.failFast = self.config["failFast"]
 
