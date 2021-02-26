@@ -360,13 +360,16 @@ properties:
                 type: array
                 items:
                     type: string
-            exclude_list:
-                anyOf:
-                    - type: array
-                      items:
-                          type: string
-                      uniqueItems: true
-                    - type: "null"
+            search:
+                type: object
+                properties:
+                    exclude_list:
+                        anyOf:
+                            - type: array
+                              items:
+                                 type: string
+                              uniqueItems: true
+                            - type: "null"
         required:
             - storage
             - sources

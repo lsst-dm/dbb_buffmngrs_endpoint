@@ -100,7 +100,8 @@ class Backfill:
                 logger.error(msg)
                 raise ValueError(msg)
 
-        self.search_opts = dict(exclude_list=config.get("exclude_list", None))
+        search = config["search"]
+        self.search_opts = dict(exclude_list=search.get("exclude_list", None))
 
     def run(self):
         """Start the backfill process.

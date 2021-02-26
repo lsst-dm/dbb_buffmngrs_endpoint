@@ -13,7 +13,8 @@ backfill:
   storage: <storage area>
   sources:
     - <file source>
-  exclude_list: null
+  search:
+    exclude_list: null
 logging:
   file: null
   format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
