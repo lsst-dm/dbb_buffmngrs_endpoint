@@ -97,7 +97,4 @@ def start(filename, dump):
 def validate(filename):
     """Validate configuration in the FILENAME.
     """
-    with open(filename) as f:
-        configuration = yaml.safe_load(f)
-    schema = yaml.safe_load(INGESTER)
-    validate_config(configuration, schema)
+    validate_config(filename, INGESTER)

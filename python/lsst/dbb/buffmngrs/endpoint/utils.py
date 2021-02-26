@@ -313,21 +313,27 @@ def setup_connection(config):
     return session, tablenames
 
 
-def validate_config(config, schema):
+def validate_config(filename, schema):
     """Validate configuration.
 
     Parameters
     ----------
-    config : `dict`
-        Configuration that needs to validated.
-    schema : `dict`
-        A schema the configuration should be validated againt.
+    filename : `str`
+        Name of the file with the configuration that needs to validated.
+    schema : `str`
+        A document in YAML format describing the schema the configuration
+        should be validated against.
 
     Raises
     ------
     ValueError
         If configuration can't be validated against the provided schema.
+    OSError
+        If the file with the configuration cannot be opened.
     """
+    with open(filename) as f:
+        config = yaml.safe_load(f)
+    schema = yaml.safe_load(schema)
     try:
         jsonschema.validate(instance=config, schema=schema)
     except jsonschema.ValidationError as ex:
