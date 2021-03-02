@@ -153,7 +153,7 @@ class Backfill:
 
                 logger.debug("%s: getting file attributes", relpath)
                 try:
-                    checksum, status = get_file_attributes(abspath)
+                    attrs = get_file_attributes(abspath, start=self.storage)
                 except FileNotFoundError:
                     logger.error("%s: no such file", relpath)
                     logger.debug("%s: terminating processing", relpath)
@@ -167,10 +167,10 @@ class Backfill:
 
                 # Add file record (starts the transaction).
                 file = self.File(
-                    relpath=dirname,
-                    filename=filename,
-                    checksum=checksum,
-                    size_bytes=status.st_size
+                    relpath=attrs.dirname,
+                    filename=attrs.filename,
+                    checksum=attrs.checksum,
+                    size_bytes=attrs.size
                 )
                 self.session.add(file)
 

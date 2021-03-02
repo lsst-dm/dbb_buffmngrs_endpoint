@@ -131,16 +131,15 @@ class Finder:
 
                 logger.debug("%s: checking if already tracked", abspath)
                 try:
-                    checksum, status = get_file_attributes(abspath)
+                    attrs = get_file_attributes(abspath)
                 except FileNotFoundError:
                     logger.error("%s: no such file", abspath)
                     logger.debug("%s: terminating processing", abspath)
                     continue
-                filename = os.path.basename(relpath)
                 try:
                     records = self.session.query(self.File).\
-                        filter(self.File.checksum == checksum,
-                               self.File.filename == filename).all()
+                        filter(self.File.checksum == attrs.checksum,
+                               self.File.filename == attrs.filename).all()
                 except SQLAlchemyError as ex:
                     logger.error("%s: cannot check if tracked: %s",
                                  abspath, ex)
@@ -166,13 +165,13 @@ class Finder:
                     logger.debug("%s: terminating processing", abspath)
                     continue
 
-                logger.debug("updating database entries")
-                dirname, basename = os.path.split(action.path)
+                logger.debug("%s: updating database entries", abspath)
+                dirname = os.path.dirname(action.path)
                 entry = self.File(
                     relpath=os.path.relpath(dirname, start=self.storage),
-                    filename=basename,
-                    checksum=checksum,
-                    size_bytes=status.st_size,
+                    filename=attrs.filename,
+                    checksum=attrs.checksum,
+                    size_bytes=attrs.size,
                 )
                 self.session.add(entry)
                 try:

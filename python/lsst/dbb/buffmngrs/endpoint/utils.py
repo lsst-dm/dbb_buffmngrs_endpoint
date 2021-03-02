@@ -20,11 +20,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """Definitions of miscellaneous helper functions.
 """
+import dataclasses
 import hashlib
 import importlib
 import logging
-import os
 import subprocess
+from pathlib import Path
 
 import jsonschema
 import yaml
@@ -34,6 +35,7 @@ from sqlalchemy.orm import sessionmaker
 
 
 __all__ = [
+    "FileInfo",
     "dump_all",
     "find_missing_tables",
     "fully_qualify_tables",
@@ -43,6 +45,28 @@ __all__ = [
     "setup_logging",
     "validate_config",
 ]
+
+
+@dataclasses.dataclass()
+class FileInfo:
+    """Data structure encapsulating various file attributes.
+    """
+
+    dirname: str = None
+    """Directory the file is in.
+    """
+
+    filename: str = None
+    """Name of the file (both, the stem and the extension, if any).
+    """
+
+    checksum: str = None
+    """Checksum of the file.
+    """
+
+    size: int = None
+    """Size of the files expressed in bytes.
+    """
 
 
 def dump_config(config):
@@ -208,25 +232,33 @@ def get_checksum(path, method='blake2', block_size=4096):
     return hasher.hexdigest()
 
 
-def get_file_attributes(path):
-    """Retrieve file attributes.
+def get_file_attributes(path, checksum=True, start=None):
+    """Gather information about a file.
 
     Parameters
     ----------
-    path : `str`
-        Path to the file.
+    path : `str`, `os.PathLike`
+        Path to the file. It can be either absolute or relative.
+    checksum : `bool`, optional
+        If set (default), file's checksum will be calculated.  If not set,
+        the checksum will be set to None.
+    start : `str`, `os.PathLike`, optional
+        If note None (default), or from an optional start directory
 
     Returns
     -------
-    checksum : `str`
-        File checksum.
-    status : `os.stat_result`
-        Status of a file, an object whose attributes correspond roughly to
-        the members of the stat structure.
+    `FileInfo`
+        Gathered file attributes grouped into a handy bundle.
     """
-    checksum = get_checksum(path)
-    status = os.stat(path)
-    return checksum, status
+    path = Path(path).resolve()
+    digest = get_checksum(path) if checksum is True else None
+    status = path.stat()
+    if start is not None:
+        path = path.relative_to(start)
+    return FileInfo(dirname=str(path.parent),
+                    filename=path.name,
+                    checksum=digest,
+                    size=status.st_size)
 
 
 def setup_logging(options=None):
