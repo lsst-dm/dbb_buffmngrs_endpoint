@@ -125,16 +125,16 @@ class Finder:
         while True:
             for relpath in self.search(self.source, **self.search_opts):
                 abspath = os.path.abspath(os.path.join(self.location, relpath))
-                logger.debug("starting processing a new file: '%s'", abspath)
+                logger.debug("%s: starting processing", abspath)
 
                 action_type = "std"
 
-                logger.debug("checking if already tracked")
+                logger.debug("%s: checking if already tracked", abspath)
                 try:
                     checksum, status = get_file_attributes(abspath)
                 except FileNotFoundError:
                     logger.error("%s: no such file", abspath)
-                    logger.debug("terminating processing of '%s'", abspath)
+                    logger.debug("%s: terminating processing", abspath)
                     continue
                 filename = os.path.basename(relpath)
                 try:
@@ -142,26 +142,28 @@ class Finder:
                         filter(self.File.checksum == checksum,
                                self.File.filename == filename).all()
                 except SQLAlchemyError as ex:
-                    logger.error("cannot check if tracked: %s", ex)
-                    logger.debug("terminating processing of '%s'", abspath)
+                    logger.error("%s: cannot check if tracked: %s",
+                                 abspath, ex)
+                    logger.debug("%s: terminating processing", abspath)
                     self.session.rollback()
                     continue
-                if len(records) != 0:
+                if records:
                     dups = ", ".join(str(rec.id) for rec in records)
-                    logger.error("file '%s' already tracked "
-                                 "(see row(s): %s)", abspath, dups)
+                    logger.error("%s: file already tracked (see row(s): %s)",
+                                 abspath, dups)
                     action_type = "alt"
 
                 action = self.dispatch[action_type]
-                logger.debug("executing action: %s", action)
+                logger.debug("%s: executing action: %s", abspath, action)
                 try:
                     action.execute(abspath)
                 except RuntimeError as ex:
-                    logger.error("action failed: %s", ex)
-                    logger.debug("terminating processing of '%s'", abspath)
+                    logger.error("%s: action failed: %s", abspath, ex)
+                    logger.debug("%s: terminating processing", abspath)
                     continue
 
                 if action_type == "alt":
+                    logger.debug("%s: terminating processing", abspath)
                     continue
 
                 logger.debug("updating database entries")
@@ -176,16 +178,17 @@ class Finder:
                 try:
                     self.session.commit()
                 except Exception as ex:
-                    logger.error("creating a database entry for %s "
-                                 "failed: %s; rolling back the changes",
-                                 relpath, ex)
+                    logger.error("%s: creating a database entry failed; %s",
+                                 abspath, ex)
+                    logger.debug("%s: rolling the changes back", abspath)
                     try:
                         action.undo()
                     except RuntimeError as ex:
-                        logger.error("cannot undo action: %s", ex)
-                    logger.debug("terminating processing of '%s'", abspath)
+                        logger.error("%s: cannot undo action: %s", abspath, ex)
+                    self.session.rollback()
+                    logger.debug("%s: terminating processing", abspath)
                 else:
-                    logger.debug("processing of '%s' completed", relpath)
+                    logger.debug("%s: processing completed", abspath)
 
             logger.debug("no new files, next check in %i sec.", self.pause)
             time.sleep(self.pause)
