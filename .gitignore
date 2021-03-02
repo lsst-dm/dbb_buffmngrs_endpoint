@@ -1,0 +1,11 @@
+# IDEs
+.idea
+
+__pycache__/
+
+bin/
+tests/.tests
+.coverage
+.sconsign.dblite
+config.log
+version.py
