@@ -23,6 +23,7 @@
 import logging
 import os
 import shutil
+
 from ..abcs import Action
 
 
@@ -60,7 +61,6 @@ class Noop(Action):
     def undo(self):
         """Roll the action back.
         """
-        pass
 
     def __repr__(self):
         config = dict()

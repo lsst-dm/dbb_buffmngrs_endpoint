@@ -25,11 +25,13 @@ import logging
 import os
 from glob import glob
 from itertools import chain
+
 from sqlalchemy.exc import SQLAlchemyError
 from ..declaratives import event_creator, file_creator
+
 from ..search import scan
 from ..status import Status
-from ..utils import get_checksum
+from ..utils import get_file_attributes
 
 
 __all__ = ["Backfill"]
@@ -128,25 +130,30 @@ class Backfill:
                 dirname, filename = os.path.split(relpath)
                 logger.debug("%s: starting processing", relpath)
 
-                logger.debug("checking if already tracked")
+                logger.debug("%s: checking if already tracked", relpath)
                 try:
-                    record = self.session.query(self.File). \
+                    records = self.session.query(self.File). \
                         filter(self.File.relpath == dirname,
-                               self.File.filename == filename).first()
-                except SQLAlchemyError as ex:
-                    logger.error("%s: cannot check if tracked: %s", relpath, ex)
+                               self.File.filename == filename).all()
+                except SQLAlchemyError as exc:
+                    counter = "failure"
+                    logger.error("%s: cannot check if tracked: %s",
+                                 relpath, exc)
+                else:
+                    counter = None
+                    if records:
+                        dups = ", ".join(str(rec.id) for rec in records)
+                        logger.warning("%s: file already tracked; "
+                                       "see row(s): %s", relpath, dups)
+                        counter = "tracked"
+                if counter is not None:
                     logger.debug("%s: terminating processing", relpath)
-                    counts["failure"] += 1
-                    continue
-                if record is not None:
-                    logger.info("file already tracked (id: %s)", record.id)
-                    logger.debug("%s: terminating processing", relpath)
-                    counts["tracked"] += 1
+                    counts[counter] += 1
                     continue
 
-                logger.debug("calculating checksum")
+                logger.debug("%s: getting file attributes", relpath)
                 try:
-                    checksum = get_checksum(abspath)
+                    attrs = get_file_attributes(abspath, start=self.storage)
                 except FileNotFoundError:
                     logger.error("%s: no such file", relpath)
                     logger.debug("%s: terminating processing", relpath)
@@ -156,13 +163,14 @@ class Backfill:
                 # Always make BOTH inserts in a single transaction!
                 # Otherwise new entry in file table may be picked up by
                 # an Ingester daemon running in the background.
-                logger.debug("updating database entries")
+                logger.debug("%s: updating database entries", relpath)
 
                 # Add file record (starts the transaction).
                 file = self.File(
-                    relpath=dirname,
-                    filename=filename,
-                    checksum=checksum,
+                    relpath=attrs.dirname,
+                    filename=attrs.filename,
+                    checksum=attrs.checksum,
+                    size_bytes=attrs.size
                 )
                 self.session.add(file)
 
@@ -192,8 +200,8 @@ class Backfill:
                     self.session.commit()
                 except Exception as ex:
                     self.session.rollback()
-                    logger.error("%s: cannot create database entries: "
-                                 "%s", relpath, ex)
+                    logger.error("%s: cannot create database entries: %s",
+                                 relpath, ex)
                     counts["failure"] += 1
                 else:
                     logger.debug("%s: processing completed", relpath)

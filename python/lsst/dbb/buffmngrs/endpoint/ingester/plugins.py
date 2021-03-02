@@ -18,13 +18,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Definitions of ingest plugins.
+"""
 import logging
 import sys
+
 import lsst.log
 from lsst.daf.butler import Butler
 from lsst.pipe.base.configOverrides import ConfigOverrides
 from lsst.pipe.tasks.ingest import IngestTask
 from lsst.utils import doImport
+
 from ..abcs import Plugin
 
 
@@ -109,16 +113,16 @@ class Gen2Ingest(Plugin):
         """
         return self._version
 
-    def execute(self, filename):
+    def execute(self, path):
         """Make an attempt to ingest the file.
 
         Parameters
         ----------
-        filename : `str`
+        path : `str`
             Path to the file.
         """
         with lsst.log.UsePythonLogging():
-            self.task.ingestFiles(filename)
+            self.task.ingestFiles(path)
 
 
 class Gen3Ingest(Plugin):
@@ -175,7 +179,13 @@ class Gen3Ingest(Plugin):
         ingest_class = doImport(self.config["ingest_task"])
         ingest_config = ingest_class.ConfigClass()
         ingest_config.transfer = self.config["transfer"]
-        ingest_config.failFast = self.config["failFast"]
+
+        # TODO: A temporary hack to make the plugin usable with LSST stack
+        #  prior to w_2021_05. Remove the if statement once a the
+        #  pre-failFast stack versions are old enough to never be used again
+        if self.config["failFast"] is not None:
+            ingest_config.failFast = self.config["failFast"]
+
         ingest_config_overrides = ConfigOverrides()
         if self.config["config_file"] is not None:
             ingest_config_overrides.addFileOverride(self.config["config_file"])

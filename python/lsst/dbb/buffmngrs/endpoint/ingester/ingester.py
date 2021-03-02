@@ -18,6 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Component responsible for ingesting files to a data management system.
+"""
 import datetime
 import logging
 import os
@@ -27,8 +29,10 @@ import threading
 import time
 import traceback
 from dataclasses import dataclass
+
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.expression import exists, func
+
 from ..declaratives import event_creator, file_creator
 from ..status import Status
 
@@ -184,6 +188,7 @@ class Ingester:
             # the database.
             for rec in records:
                 path = os.path.join(rec.relpath, rec.filename)
+                size = rec.size_bytes
 
                 message, status = None, None
                 if self.include_list:
@@ -196,8 +201,10 @@ class Ingester:
                         status = Status.IGNORED
                         logger.debug("%s: %s", path, message)
                     else:
-                        logger.debug("%s: search criteria met; matched "
-                                    "pattern(s): %s", path, ', '.join(matches))
+                        logger.debug("%s: search criteria met; "
+                                     "matched at least one pattern on the "
+                                     "include list: matched pattern(s): %s",
+                                     path, ', '.join(matches))
                 if self.exclude_list:
                     matches = [f"'{patt}'" for patt in self.exclude_list
                                if re.search(patt, path) is not None]
@@ -208,17 +215,16 @@ class Ingester:
                         status = Status.IGNORED
                         logger.debug("%s: %s; matched pattern(s): %s",
                                      path, message, ', '.join(matches))
-                try:
-                    sz = os.stat(os.path.join(self.storage, path)).st_size
-                except FileNotFoundError:
-                    message = "no such file in the storage area"
+                if size == 0:
+                    message = f"file has {size} bytes"
                     status = Status.INVALID
-                else:
-                    if sz == 0:
-                        message = f"file has {sz} bytes"
-                        status = Status.INVALID
-                if status == Status.INVALID:
-                    logger.warning("'%s':  %s", path, message)
+                logger.debug("%s: size is %i bytes", path, size)
+                if not os.path.isfile(os.path.join(self.storage, path)):
+                    message = f"no such file in the storage area"
+                    status = Status.INVALID
+                if message is not None:
+                    logger.debug("%s: message: '%s'; status: '%s'",
+                                 path, message, status.value)
 
                 # If all checks were passed, create a request to make an
                 # ingest attempt and enqueue it for processing.  Otherwise,

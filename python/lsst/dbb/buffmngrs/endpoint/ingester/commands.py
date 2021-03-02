@@ -18,10 +18,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Command line interface for the Ingester component.
+"""
 import importlib
 import logging
+
 import click
 import yaml
+
 from .ingester import Ingester
 from ..utils import dump_all, setup_connection, setup_logging, validate_config
 from ..validation import INGESTER
@@ -34,25 +38,18 @@ logger = logging.getLogger(__name__)
 def ingester():
     """Manage file ingestion to a data management system.
     """
-    pass
 
 
 @ingester.command()
 @click.option("--dump/--no-dump", default=True,
               help="Log runtime environment and configuration "
                    "(ignored if severity is set to WARNING and higher).")
-@click.option("--validate/--no-validate", default=False,
-              help="Validate configuration before starting the service.")
 @click.argument("filename", type=click.Path(exists=True))
-def start(filename, dump, validate):
+def start(filename, dump):
     """Starts an ingester using a configuration from FILENAME.
     """
     with open(filename) as f:
         configuration = yaml.safe_load(f)
-    if validate:
-        schema = yaml.safe_load(INGESTER)
-        validate_config(configuration, schema)
-        return
 
     config = configuration.get("logging", None)
     setup_logging(options=config)
@@ -84,7 +81,7 @@ def start(filename, dump, validate):
     plugin_name = config["plugin"]["name"]
     try:
         class_ = getattr(module, plugin_name)
-    except AttributeError as ex:
+    except AttributeError:
         msg = f"Unknown ingest plugin '{plugin_name}'."
         logger.error(msg)
         raise RuntimeError(msg)
@@ -93,3 +90,11 @@ def start(filename, dump, validate):
     logger.info("starting Ingester...")
     component = Ingester(ingester_config)
     component.run()
+
+
+@ingester.command()
+@click.argument("filename", type=click.Path(exists=True))
+def validate(filename):
+    """Validate configuration in the FILENAME.
+    """
+    validate_config(filename, INGESTER)

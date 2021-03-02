@@ -18,10 +18,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Definitions of miscellaneous helper functions.
+"""
+import dataclasses
 import hashlib
 import importlib
 import logging
 import subprocess
+from pathlib import Path
+
 import jsonschema
 import yaml
 from sqlalchemy import create_engine, inspect
@@ -30,14 +35,38 @@ from sqlalchemy.orm import sessionmaker
 
 
 __all__ = [
+    "FileInfo",
     "dump_all",
     "find_missing_tables",
     "fully_qualify_tables",
     "get_checksum",
+    "get_file_attributes",
     "setup_connection",
     "setup_logging",
     "validate_config",
 ]
+
+
+@dataclasses.dataclass()
+class FileInfo:
+    """Data structure encapsulating various file attributes.
+    """
+
+    dirname: str = None
+    """Directory the file is in.
+    """
+
+    filename: str = None
+    """Name of the file (both, the stem and the extension, if any).
+    """
+
+    checksum: str = None
+    """Checksum of the file.
+    """
+
+    size: int = None
+    """Size of the files expressed in bytes.
+    """
 
 
 def dump_config(config):
@@ -203,6 +232,35 @@ def get_checksum(path, method='blake2', block_size=4096):
     return hasher.hexdigest()
 
 
+def get_file_attributes(path, checksum=True, start=None):
+    """Gather information about a file.
+
+    Parameters
+    ----------
+    path : `str`, `os.PathLike`
+        Path to the file. It can be either absolute or relative.
+    checksum : `bool`, optional
+        If set (default), file's checksum will be calculated.  If not set,
+        the checksum will be set to None.
+    start : `str`, `os.PathLike`, optional
+        If note None (default), or from an optional start directory
+
+    Returns
+    -------
+    `FileInfo`
+        Gathered file attributes grouped into a handy bundle.
+    """
+    path = Path(path).resolve()
+    digest = get_checksum(path) if checksum is True else None
+    status = path.stat()
+    if start is not None:
+        path = path.relative_to(start)
+    return FileInfo(dirname=str(path.parent),
+                    filename=path.name,
+                    checksum=digest,
+                    size=status.st_size)
+
+
 def setup_logging(options=None):
     """Configure logger.
 
@@ -287,21 +345,27 @@ def setup_connection(config):
     return session, tablenames
 
 
-def validate_config(config, schema):
+def validate_config(filename, schema):
     """Validate configuration.
 
     Parameters
     ----------
-    config : `dict`
-        Configuration that needs to validated.
-    schema : `dict`
-        A schema the configuration should be validated againt.
+    filename : `str`
+        Name of the file with the configuration that needs to validated.
+    schema : `str`
+        A document in YAML format describing the schema the configuration
+        should be validated against.
 
     Raises
     ------
     ValueError
         If configuration can't be validated against the provided schema.
+    OSError
+        If the file with the configuration cannot be opened.
     """
+    with open(filename) as f:
+        config = yaml.safe_load(f)
+    schema = yaml.safe_load(schema)
     try:
         jsonschema.validate(instance=config, schema=schema)
     except jsonschema.ValidationError as ex:

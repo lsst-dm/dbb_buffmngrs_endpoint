@@ -18,6 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""Definitions of abstract base classes.
+"""
 import abc
 
 
@@ -46,13 +48,11 @@ class Action(abc.ABC):
         path : `str`
             Path to the file.
         """
-        pass
 
     @abc.abstractmethod
     def undo(self):
         """Roll action back.
         """
-        pass
 
 
 class Macro(Action):
@@ -100,7 +100,7 @@ class Macro(Action):
         self._fp = path
         for a in self._actions:
             a.execute(self._fp)
-            self._fp = a.filepath
+            self._fp = a.path
 
     def undo(self):
         """Roll back actions performed on the file.
@@ -122,10 +122,8 @@ class Plugin(abc.ABC):
     def execute(self, path):
         """Run plugin.
         """
-        pass
 
     @abc.abstractmethod
     def version(self):
         """Return the version of the data management system ingest software.
         """
-        pass
