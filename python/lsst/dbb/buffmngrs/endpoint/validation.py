@@ -227,13 +227,13 @@ properties:
                                                 - type: "null"
                                         config_file:
                                             anyOf:
-                                                - type: object
+                                                - type: string
                                                 - type: "null"
                                         ingest_task:
                                             type: string
                                         output_run:
                                             anyOf:
-                                                - type: object
+                                                - type: string
                                                 - type: "null"
                                         transfer:
                                             type: string

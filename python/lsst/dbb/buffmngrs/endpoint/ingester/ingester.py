@@ -182,16 +182,21 @@ class Ingester:
             #
             # (a) whose name matches at least one pattern on the include list,
             # (b) does not match any pattern on the exclude list,
-            # (c) is not an empty.
+            # (c) still exists (a sanity check),
+            # (d) is not empty.
             #
-            # Only the outcome of the last failed check is stored in
-            # the database.
+            # If a file fails to pass a check, any remaining checks will be
+            # skipped.
+            #
+            # We don't want to create events, other than about being ignored,
+            # for files which don't meet the search criteria. Thus matching
+            # a filename against the patterns on the include and the exclude
+            # lists should precede any other checks.
             for rec in records:
                 path = os.path.join(rec.relpath, rec.filename)
-                size = rec.size_bytes
-
                 message, status = None, None
-                if self.include_list:
+
+                if status is None and self.include_list:
                     matches = [f"'{patt}'" for patt in self.include_list
                                if re.search(patt, path) is not None]
                     if not matches:
@@ -205,7 +210,8 @@ class Ingester:
                                      "matched at least one pattern on the "
                                      "include list: matched pattern(s): %s",
                                      path, ', '.join(matches))
-                if self.exclude_list:
+
+                if status is None and self.exclude_list:
                     matches = [f"'{patt}'" for patt in self.exclude_list
                                if re.search(patt, path) is not None]
                     if matches:
@@ -215,14 +221,19 @@ class Ingester:
                         status = Status.IGNORED
                         logger.debug("%s: %s; matched pattern(s): %s",
                                      path, message, ', '.join(matches))
-                if size == 0:
+
+                abspath = os.path.join(self.storage, path)
+                if status is None and not os.path.isfile(abspath):
+                    message = "no such file in the storage area"
+                    status = Status.INVALID
+
+                size = rec.size_bytes
+                if status is None and size == 0:
                     message = f"file has {size} bytes"
                     status = Status.INVALID
                 logger.debug("%s: size is %i bytes", path, size)
-                if not os.path.isfile(os.path.join(self.storage, path)):
-                    message = f"no such file in the storage area"
-                    status = Status.INVALID
-                if message is not None:
+
+                if status is not None:
                     logger.debug("%s: message: '%s'; status: '%s'",
                                  path, message, status.value)
 
