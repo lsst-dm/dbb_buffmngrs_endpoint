@@ -193,7 +193,11 @@ class Gen3Ingest(Plugin):
             for key, val in self.config["config"].items():
                 ingest_config_overrides.addValueOverride(key, val)
         ingest_config_overrides.applyTo(ingest_config)
-        self.task = ingest_class(config=ingest_config, butler=butler)
+        self.task = ingest_class(config=ingest_config,
+                                 butler=butler,
+                                 on_success=self._handle_success,
+                                 on_metadata_failure=self._handle_failure,
+                                 on_ingest_failure=self._handle_failure)
 
         # Retrieve the version of the LSST ingest software in use.
         self._version = "N/A"
@@ -203,6 +207,8 @@ class Gen3Ingest(Plugin):
             self._version = getattr(pkg, "__version__")
         except AttributeError:
             logger.warning("failed to identified plugin version")
+
+        self._results = None
 
     def version(self):
         """Return the version of the LSST ingest task.
@@ -225,3 +231,31 @@ class Gen3Ingest(Plugin):
         with lsst.log.UsePythonLogging():
             self.task.run([filename],
                           run=self.config["output_run"], processes=1)
+
+    def _handle_success(self, data):
+        """Extract data about the file which was successfully ingested.
+
+        Parameters
+        ----------
+        data : `lsst.daf.butler.FileDataset`
+            A data structure representing the ingested dataset.
+        """
+        self._result = data
+
+    def _handle_failure(self, data, exc):
+        """Re-raise the exception encountered during a failed ingest attempt.
+
+        Parameters
+        ----------
+        data : `lsst.daf.butler.ButlerURI` or `lsst.daf.butler.RawExposureData`
+            A Butler data structure received after the failed ingest attempts.
+        exc : Exception
+            The exception raised during the ingest attempt.
+
+        Raises
+        ------
+        exc : Exception
+            The exception raised during the failed ingestion attempt.
+        """
+        self._result = data
+        raise exc

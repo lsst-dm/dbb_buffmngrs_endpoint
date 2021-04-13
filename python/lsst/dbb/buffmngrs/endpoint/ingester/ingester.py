@@ -447,11 +447,17 @@ def worker(inp, out, plugin_cls, plugin_cfg):
             status = Status.FAILURE
         except Exception as exc:
             logger.exception(exc)
-            # Find the root cause of the exception as it seems that for both
-            # Gen2 and Gen3 Butler the most meaningful error messages tend
-            # to be located at the very bottom of the stack trace.
+
+            # Find the root cause of the exception to persist it in the
+            # database.
+            #
+            # Only really relevant in case of Gen2 and earlier versions of
+            # Gen3 Butler (before failFast/callbacks were available) as the
+            # most meaningful error messages tend to be located at the very
+            # bottom of the stack trace.
             while exc.__cause__ is not None:
                 exc = exc.__cause__
+
             exc_msg = traceback.format_exception_only(type(exc), exc)[0]
             message = exc_msg.strip()
             status = Status.FAILURE
