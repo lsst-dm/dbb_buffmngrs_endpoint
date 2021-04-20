@@ -106,7 +106,7 @@ information about file, here ``files``.
    example, if the table ``files`` is located in the schema ``dbbbm``,  section
    ``tablenames`` should be specified as:
 
-   .. code-block: yaml
+   .. code-block:: yaml
 
       tablenames:
         schema: dbbbm
@@ -135,7 +135,8 @@ The Ingester configuration looks quite similar:
      plugin:
        name: Gen2Ingest
        config:
-         root: /data/gen2repo
+         butler:
+           root: /data/gen2repo
 
 As you can see, the section ``database`` is identical to the respective
 section of Finder's configuration.
@@ -147,8 +148,8 @@ The Ingester uses plugins to ingest images to different database systems. Hence
 you need to tell which plugin to use and provide settings a given plugin may
 need to access the data management system it supports.
 
-In the provided example the Ingester will be ingesting images to a Gen2 data
-repository located in ``/data/gen2repo``.
+In the provided example the Ingester will be ingesting images to a Gen2 Butler
+dataset repository located in ``/data/gen2repo``.
 
 .. note::
 
@@ -261,6 +262,7 @@ tell the Ingester to make another ingest attempt for selected files.  To do so:
    with ``RERUN`` status (note two new lines at the end):
 
    .. code-block:: YAML
+      :emphasize-lines: 14-15
 
       database:
         engine: "postgres://tester:password@localhost:5432/test"
@@ -273,7 +275,8 @@ tell the Ingester to make another ingest attempt for selected files.  To do so:
         plugin:
           name: Gen2Ingest
           config:
-            root: /data/gen2repo
+            butler:
+              root: /data/gen2repo
         daemon: false
         file_status: RERUN
 
