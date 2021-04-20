@@ -25,6 +25,7 @@ import hashlib
 import importlib
 import logging
 import subprocess
+import sys
 from pathlib import Path
 
 import jsonschema
@@ -41,6 +42,7 @@ __all__ = [
     "fully_qualify_tables",
     "get_checksum",
     "get_file_attributes",
+    "get_version",
     "setup_connection",
     "setup_logging",
     "validate_config",
@@ -230,6 +232,30 @@ def get_checksum(path, method='blake2', block_size=4096):
         for chunk in iter(lambda: f.read(block_size), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
+
+
+def get_version(task):
+    """Retrieve the version of the LSST task.
+
+    Parameters
+    ----------
+    task : `str`
+        Fully-qualified name of the LSST task.
+
+    Returns
+    -------
+    version : `str`
+        String representing the version of the LSST task or ``None`` if the
+        version could not be determined.
+    """
+    mod_name = ".".join(task.split(".")[:-1])
+    pkg_name = sys.modules[mod_name].__package__
+    pkg = sys.modules[pkg_name]
+    try:
+        version = getattr(pkg, "__version__")
+    except AttributeError:
+        return None
+    return version
 
 
 def get_file_attributes(path, checksum=True, start=None):
