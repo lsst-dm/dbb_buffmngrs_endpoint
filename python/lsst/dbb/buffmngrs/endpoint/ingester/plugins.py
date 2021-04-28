@@ -293,23 +293,22 @@ class Gen3RawIngestPlugin(Plugin):
         self._version = get_version(self.config["task"])
         self._result = None
 
-    def execute(self, path):
-        """Ingest a file to a Gen3 Butler dataset repository.
+    def execute(self, data):
+        """Ingest a file to a Gen3 Butler data repository.
 
         Parameters
         ----------
-        path : `str`
+        data : `str`
             Path to the file.
 
         Returns
         -------
-        result : `list` [`lsst.daf.bulter.DatasetRef`]
+        result : `list` [`lsst.daf.butler.DatasetRef`]
             Dataset references for ingested raws.
         """
-        data = [path]
         with UsePythonLogging():
-            result = self.task.run(data,
-                                   run=self.config["output_run"],
+            result = self.task.run([data],
+                                   run=self._config["output_run"],
                                    pool=None, processes=1)
         return result
 
@@ -326,6 +325,9 @@ class Gen3RawIngestPlugin(Plugin):
     def _handle_success(self, data):
         """Extract data about the file which was successfully ingested.
 
+        It should be only be used only as the callback function in the
+        LSST ingest software for handling successful ingest attempts.
+
         Parameters
         ----------
         data : `lsst.daf.butler.FileDataset`
@@ -335,6 +337,9 @@ class Gen3RawIngestPlugin(Plugin):
 
     def _handle_failure(self, data, exc):
         """Re-raise the exception encountered during a failed ingest attempt.
+
+        It should be only be used only as the callback function in the
+        LSST ingest software for handling failed ingest attempts.
 
         Parameters
         ----------
@@ -397,25 +402,26 @@ class Gen3DefineVisitsPlugin(Plugin):
 
         self._version = get_version(self.config["task"])
 
-    def execute(self, refs):
+    def execute(self, data):
         """Add visit definition to the registry for the given exposure.
 
         Parameters
         ----------
-        refs : `list` [`lsst.daf.butler.DatasetRef`]
-            DataIds of the file for which the visit needs to be defined.
+        data : `list` [`lsst.daf.butler.DatasetRef`]
+            References to the datasets of the file for which the visit needs
+            to be defined.
 
         Returns
         -------
         refs : `list` [`lsst.daf.butler.DatasetRef`]
             The references to the datasets it received.
         """
-        data = [ref.dataId for ref in refs]
+        ids = [ref.dataId for ref in data]
         with UsePythonLogging():
-            self.task.run(data,
-                          collections=self.config["collections"],
+            self.task.run(ids,
+                          collections=self._config["collections"],
                           pool=None, processes=1)
-        return refs
+        return data
 
     def version(self):
         """Retrieve the version of the LSST task used for defining visits.
