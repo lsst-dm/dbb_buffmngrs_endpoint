@@ -23,7 +23,7 @@
 import logging
 
 from lsst.log import UsePythonLogging
-from lsst.daf.butler import Butler, DatasetRef
+from lsst.daf.butler import Butler
 from lsst.obs.base.utils import getInstrument
 from lsst.pipe.base.configOverrides import ConfigOverrides
 from lsst.utils import doImport
