@@ -15,9 +15,9 @@ ingester:
     name: Gen3Ingest
     config:
 
-      # Settings specific to accessing the dataset repository.
+      # Settings specific to accessing the Butler data repository.
       butler:
-        root: <dataset repository>
+        root: <repository location>
         collection: null
 
       # Settings specific to ingesting raw images.
@@ -29,7 +29,7 @@ ingester:
         transfer: symlink
 
       # Settings specific to defining visits.
-      visit:
+      visits:
         instrument: <instrument>
         config_file: null
         processes: 1

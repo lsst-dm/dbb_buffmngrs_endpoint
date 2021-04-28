@@ -15,9 +15,9 @@ ingester:
     name: Gen2Ingester
     config:
 
-      # Settings specific to accessing the dataset repository.
+      # Settings specific to accessing the Butler data repository.
       butler:
-        root: <dataset repository>
+        root: <repository location>
 
       # Settings specific to ingesting raw images to the repository.
       ingest:

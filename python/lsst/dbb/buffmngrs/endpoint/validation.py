@@ -267,7 +267,7 @@ properties:
                                                         - direct
                                                 task:
                                                     type: string
-                                        visit:
+                                        visits:
                                             type: object
                                             properties:
                                                 config_file:
