@@ -72,7 +72,7 @@ class Gen2Ingest(Plugin):
     See ``lsst.pipe.tasks.ingest`` for details.
     """
 
-    defaults = {
+    _defaults = {
         "create": False,
         "dryrun": False,
         "ignoreIngested": False,
@@ -88,24 +88,26 @@ class Gen2Ingest(Plugin):
             logger.error(msg)
             raise KeyError(msg) from exc
 
-        self.config = {**self.defaults, **butler_config}
-        self.config.update(config.get("ingest", {}))
+        self._config = {**self._defaults, **butler_config}
+        self._config.update(config.get("ingest", {}))
 
         required = {"root"}
-        missing = required - set(self.config)
+        missing = required - set(self._config)
         if missing:
-            msg = f"Invalid configuration: {', '.join(missing)} not provided."
+            msg = f"invalid configuration: {', '.join(missing)} not provided."
             logger.error(msg)
             raise KeyError(msg)
 
         # Initialize LSST ingest software.
-        task_class = doImport(self.config["task"])
-        task_config = {key: val for key, val in self.config.items()
+        task_class = doImport(self._config["task"])
+        task_config = {key: val for key, val in self._config.items()
                        if key != "task"}
         with UsePythonLogging():
             self.task = task_class.prepareTask(**task_config)
 
-        self._version = get_version(self.config["task"])
+        # Save the LSST ingest software version for faster lookup as it will
+        # be used during every ingest attempt.
+        self._version = get_version(self._config["task"])
 
     def execute(self, path):
         """Make an attempt to ingest the file.
@@ -259,29 +261,29 @@ class Gen3RawIngestPlugin(Plugin):
     #
     # Parallel ingestion is disabled, ``pool`` and ``processes`` settings
     # will be ignored and are included only for sake of completeness.
-    defaults = {
+    _defaults = {
         "config": None,
         "config_file": None,
         "output_run": None,
         "pool": None,
         "processes": 1,
         "task": "lsst.obs.base.RawIngestTask",
-        "transfer": "symlink",
+        "transfer": "direct",
     }
 
     def __init__(self, config, butler):
-        self.config = {**self.defaults, **config}
+        self._config = {**self._defaults, **config}
 
-        task_class = doImport(self.config["task"])
+        task_class = doImport(self._config["task"])
 
         task_config = task_class.ConfigClass()
-        task_config.transfer = self.config["transfer"]
+        task_config.transfer = self._config["transfer"]
 
         task_config_overrides = ConfigOverrides()
-        if self.config["config_file"] is not None:
-            task_config_overrides.addFileOverride(self.config["config_file"])
-        if self.config["config"] is not None:
-            for key, val in self.config["config"].items():
+        if self._config["config_file"] is not None:
+            task_config_overrides.addFileOverride(self._config["config_file"])
+        if self._config["config"] is not None:
+            for key, val in self._config["config"].items():
                 task_config_overrides.addValueOverride(key, val)
         task_config_overrides.applyTo(task_config)
         self.task = task_class(config=task_config,
@@ -290,7 +292,7 @@ class Gen3RawIngestPlugin(Plugin):
                                on_metadata_failure=self._handle_failure,
                                on_ingest_failure=self._handle_failure)
 
-        self._version = get_version(self.config["task"])
+        self._version = get_version(self._config["task"])
         self._result = None
 
     def execute(self, data):
@@ -377,7 +379,7 @@ class Gen3DefineVisitsPlugin(Plugin):
     #
     # The ``pool`` and ``processes`` settings will be ignored and are included
     # only for sake of completeness.
-    defaults = {
+    _defaults = {
         "config_file": None,
         "collections": None,
         "pool": None,
@@ -386,21 +388,23 @@ class Gen3DefineVisitsPlugin(Plugin):
     }
 
     def __init__(self, config, butler):
-        self.config = {**self.defaults, **config}
+        self._config = {**self._defaults, **config}
 
-        task_class = doImport(self.config["task"])
+        task_class = doImport(self._config["task"])
         task_config = task_class.ConfigClass()
 
-        instr = getInstrument(self.config["instrument"], butler.registry)
+        instr = getInstrument(self._config["instrument"], butler.registry)
         instr.applyConfigOverrides(task_class._DefaultName, task_config)
-        if self.config["collections"] is None:
-            self.config["collections"] = instr.makeDefaultRawIngestRunName()
+        if self._config["collections"] is None:
+            self._config["collections"] = instr.makeDefaultRawIngestRunName()
 
-        if self.config["config_file"] is not None:
-            task_config.load(self.config["config_file"])
+        if self._config["config_file"] is not None:
+            task_config.load(self._config["config_file"])
         self.task = task_class(config=task_config, butler=butler)
 
-        self._version = get_version(self.config["task"])
+        # Save the LSST ingest software version for faster lookup as it will
+        # be used during every ingest attempt.
+        self._version = get_version(self._config["task"])
 
     def execute(self, data):
         """Add visit definition to the registry for the given exposure.
