@@ -64,7 +64,7 @@ class Gen2Ingest(Plugin):
 
     Raises
     ------
-    ValueError
+    KeyError
         If root directory of the Butler repository is not provided.
 
     Notes
@@ -83,10 +83,10 @@ class Gen2Ingest(Plugin):
     def __init__(self, config):
         try:
             butler_config = config["butler"]
-        except KeyError:
-            msg = "invalid configuration: Butler settings are missing"
+        except KeyError as exc:
+            msg = "invalid configuration: 'butler' section is missing"
             logger.error(msg)
-            raise ValueError(msg)
+            raise KeyError(msg) from exc
 
         self.config = {**self.defaults, **butler_config}
         self.config.update(config.get("ingest", {}))
@@ -96,7 +96,7 @@ class Gen2Ingest(Plugin):
         if missing:
             msg = f"Invalid configuration: {', '.join(missing)} not provided."
             logger.error(msg)
-            raise ValueError(msg)
+            raise KeyError(msg)
 
         # Initialize LSST ingest software.
         task_class = doImport(self.config["task"])
@@ -142,17 +142,17 @@ class Gen3Ingest(Plugin):
 
     Raises
     ------
-    ValueError
+    KeyError
         If a required configuration setting is missing.
     """
 
     def __init__(self, config):
         try:
             butler_config = config["butler"]
-        except KeyError:
-            msg = "invalid configuration: Butler settings are missing"
+        except KeyError as exc:
+            msg = "invalid configuration: 'butler' section is missing"
             logger.error(msg)
-            raise ValueError(msg)
+            raise KeyError(msg) from exc
 
         self._plugins = []
 
@@ -162,7 +162,7 @@ class Gen3Ingest(Plugin):
         if missing:
             msg = f"Invalid configuration: {', '.join(missing)} not provided."
             logger.error(msg)
-            raise ValueError(msg)
+            raise KeyError(msg)
 
         collection = butler_config.get("collection", None)
         butler = Butler(butler_config["root"],
@@ -176,12 +176,12 @@ class Gen3Ingest(Plugin):
 
         # Optionally, configure and register the LSST task responsible for
         # defining visits.
-        task_config = config.get("visit", {})
+        task_config = config.get("visits", {})
         if task_config:
             if "instrument" not in task_config:
                 msg = "invalid configuration: instrument not specified"
                 logger.error(msg)
-                raise ValueError(msg)
+                raise KeyError(msg)
             if collection is not None:
                 task_config["collections"] = collection
             self.register(Gen3DefineVisitsPlugin(task_config, butler))
@@ -212,7 +212,7 @@ class Gen3Ingest(Plugin):
 
         Raises
         ------
-        ValueError
+        TypeError
             If the input argument is not a Plugin class instance.
         """
         if not isinstance(plugin, Plugin):
