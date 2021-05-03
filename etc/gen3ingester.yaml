@@ -13,24 +13,27 @@ ingester:
   storage: <storage area>
   plugin:
     name: Gen3Ingest
-
-    # This section contains settings which are passed directly to the
-    # LSST function responsible for creating the actual ingest task.
     config:
 
-      # Gen3Ingest specific options.
-      #
-      # Note
-      # ----
-      # Only 'root' is required, others are optional.
-      root: <dataset repository>
-      config: null
-      config_file: null
-      ingest_task: lsst.obs.base.RawIngestTask
-      output_run: null
-      processes: 1
-      transfer: symlink
-      failFast: true
+      # Settings specific to accessing the Butler data repository.
+      butler:
+        root: <repository location>
+        collection: null
+
+      # Settings specific to ingesting raw images.
+      ingest:
+        config: null
+        config_file: null
+        processes: 1
+        task: lsst.obs.base.RawIngestTask
+        transfer: symlink
+
+      # Settings specific to defining visits.
+      visits:
+        instrument: <instrument>
+        config_file: null
+        processes: 1
+        task: lsst.obs.base.DefineVisitTask
 
   include_list: null
   exclude_list: null

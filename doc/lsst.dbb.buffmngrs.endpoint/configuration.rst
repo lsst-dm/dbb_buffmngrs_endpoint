@@ -315,18 +315,29 @@ Event table specification looks exactly like file table specification (see
     management system.
 
     Currently, there are two plugins: **Gen2Ingest** and **Gen3Ingest** which
-    support ingesting images to a Gen2 and Gen3 Butler dataset repository,
+    support ingesting images to a Gen2 and Gen3 Butler data repository,
     respectively.
 
 ``ingester.plugin.config``
     *Type*: object
 
-    This section contains configuration settigs for a specific ingest code used
-    by the given plugin.  All settings are passed directly to the LSST function
-    responsible for creating the actual ingest task.
+    This section contains configuration settings for a specific ingest code
+    used by the given plugin.
 
-    Only **root**, the absolute path of the Butler dataset repository, is
-    mandatory, others are optional.
+    For Gen2 and Gen3 Butler ingest plugins, the subsection called **butler**
+    must exist and it must contain the **root** setting, the absolute path of
+    the Butler data repository.  An optional subsection called **ingest**
+    allows for overriding default ingest settings.
+
+    An additional section, called **visit**, may be specified for Gen3 ingest
+    plugin.  If specified, the Gen3 ingest plugin will also invoke the LSST
+    task responsible for defining visits after a successful ingestion.  When
+    specified, the section must contain **instrument**, a fully-qualified class
+    name which handles instrument-specific logic for the Gen3 Butler.
+
+    Example files showing the complete list of the options recognized by the
+    given plugin as well as their default values are located in the project's
+    ``etc`` directory.
 
 ``ingester.include_list``
     *Type*: sequence

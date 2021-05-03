@@ -192,23 +192,33 @@ properties:
                                 config:
                                     type: object
                                     properties:
-                                        root:
-                                            type: string
-                                        mode:
-                                            type: string
-                                            enum:
-                                                - copy
-                                                - link
-                                                - move
-                                                - skip
-                                        create:
-                                            type: boolean
-                                        dryrun:
-                                            type: boolean
-                                        ignoreIngested:
-                                            type: boolean
+                                        butler:
+                                            type: object
+                                            properties:
+                                                root:
+                                                    type: string
+                                            required:
+                                                - root
+                                        ingest:
+                                            type: object
+                                            properties:
+                                                create:
+                                                    type: boolean
+                                                dryrun:
+                                                    type: boolean
+                                                ignoreIngested:
+                                                    type: boolean
+                                                mode:
+                                                    type: string
+                                                    enum:
+                                                        - copy
+                                                        - link
+                                                        - move
+                                                        - skip
+                                                task:
+                                                    type: string
                                     required:
-                                        - root
+                                        - butler
                     -
                         if: 
                             properties:
@@ -219,37 +229,63 @@ properties:
                                 config:
                                     type: object
                                     properties:
-                                        root:
-                                            type: string
-                                        config:
-                                            anyOf:
-                                                - type: object
-                                                - type: "null"
-                                        config_file:
-                                            anyOf:
-                                                - type: string
-                                                - type: "null"
-                                        ingest_task:
-                                            type: string
-                                        output_run:
-                                            anyOf:
-                                                - type: string
-                                                - type: "null"
-                                        transfer:
-                                            type: string
-                                            enum:
-                                                - auto
-                                                - link
-                                                - symlink
-                                                - hardlink
-                                                - copy
-                                                - move
-                                                - relsymlink
-                                                - direct
-                                        failFast:
-                                            type: boolean
+                                        butler:
+                                            type: object
+                                            properties:
+                                                root:
+                                                    type: string
+                                                collection:
+                                                    anyOf:
+                                                        - type: string
+                                                        - type: "null"
+                                            required:
+                                                - root
+                                        ingest:
+                                            type: object
+                                            properties:
+                                                config:
+                                                    anyOf:
+                                                        - type: object
+                                                        - type: "null"
+                                                config_file:
+                                                    anyOf:
+                                                        - type: string
+                                                        - type: "null"
+                                                processes:
+                                                    type: integer
+                                                    minimum: 1
+                                                transfer:
+                                                    type: string
+                                                    enum:
+                                                        - auto
+                                                        - link
+                                                        - symlink
+                                                        - hardlink
+                                                        - copy
+                                                        - move
+                                                        - relsymlink
+                                                        - direct
+                                                task:
+                                                    type: string
+                                        visits:
+                                            type: object
+                                            properties:
+                                                config_file:
+                                                    anyOf:
+                                                        - type: string
+                                                        - type: "null"
+                                                instrument:
+                                                    type: string
+                                                processes:
+                                                    type: integer
+                                                    minimum: 1
+                                                task:
+                                                    type: string
+                                            required:
+                                                - instrument
                                     required:
-                                        - root
+                                        - butler
+                                        - ingest
                 required:
                     - name
                     - config

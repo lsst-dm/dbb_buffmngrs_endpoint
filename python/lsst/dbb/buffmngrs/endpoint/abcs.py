@@ -116,11 +116,16 @@ class Macro(Action):
 
 
 class Plugin(abc.ABC):
-    """Define the interface for the ingest plugin.
+    """Define the interface for a plugins.
     """
     @abc.abstractmethod
-    def execute(self, path):
+    def execute(self, data):
         """Run plugin.
+
+        Parameters
+        ----------
+        data : Any
+            Input data for the LSST software.
         """
 
     @abc.abstractmethod

@@ -13,21 +13,19 @@ ingester:
   storage: <storage area>
   plugin:
     name: Gen2Ingester
-
-    # This section contains settings which are passed directly to the
-    # LSST function responsible for creating the actual ingest task.
     config:
 
-      # Gen2Ingest specific options.
-      #
-      # Note
-      # ----
-      # Only 'root' is required, others are optional.
-      root: <dataset repository>
-      dryrun: false
-      mode: link
-      create: false
-      ignoreIngested: false
+      # Settings specific to accessing the Butler data repository.
+      butler:
+        root: <repository location>
+
+      # Settings specific to ingesting raw images to the repository.
+      ingest:
+        task: lsst.pipe.tasks.ingest.IngestTask
+        dryrun: false
+        mode: link
+        create: false
+        ignoreIngested: false
 
   include_list: null
   exclude_list: null
