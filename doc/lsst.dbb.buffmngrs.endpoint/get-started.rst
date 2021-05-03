@@ -77,7 +77,7 @@ component that you may adapt to your local configuration:
 .. code-block:: yaml
 
    database:
-     engine: "postgres://tester:password@localhost:5432/test"
+     engine: "postgresql://tester:password@localhost:5432/test"
      tablenames:
        file:
          table: files
@@ -125,7 +125,7 @@ The Ingester configuration looks quite similar:
 .. code-block:: yaml
 
    database:
-     engine: "postgres://tester:password@localhost:5432/test"
+     engine: "postgresql://tester:password@localhost:5432/test"
      tablenames:
        file:
          table: files
@@ -265,7 +265,7 @@ tell the Ingester to make another ingest attempt for selected files.  To do so:
       :emphasize-lines: 14-15
 
       database:
-        engine: "postgres://tester:password@localhost:5432/test"
+        engine: "postgresql://tester:password@localhost:5432/test"
         tablenames:
           file:
             table: files
@@ -301,7 +301,7 @@ directory:
    .. code-block:: YAML
 
       database:
-        engine: "postgres://tester:password@localhost:5432/test"
+        engine: "postgresql://tester:password@localhost:5432/test"
         tablenames:
           file:
             table: files
