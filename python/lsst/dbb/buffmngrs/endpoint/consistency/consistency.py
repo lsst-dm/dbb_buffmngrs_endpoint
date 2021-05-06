@@ -21,6 +21,28 @@
 """Component responsible for comparing storage area and repository.
 """
 
+"""NOTE: TO DELETE: 
+CREATE TABLE IF NOT EXISTS files (
+    id       INTEGER     PRIMARY KEY AUTOINCREMENT,
+    relpath  TEXT        NOT NULL, -- relative path to the image
+    filename TEXT        NOT NULL, -- image filename
+    checksum TEXT        NOT NULL, -- file's checksum
+    added_on NUMERIC     NOT NULL, -- time when the file was detected
+    UNIQUE (checksum, filename)
+);
+CREATE TABLE IF NOT EXISTS gen2_file_events (
+    ingest_ver  TEXT     NULL, -- Stack version used to ingest
+    start_time  NUMERIC  NULL, -- tiem when the attmept was made
+    duration    NUMERIC  NULL, -- ingest duration
+    err_message TEXT     NULL, -- traceback if an attempt failed
+    status      TEXT     NULL,
+    files_id    INTEGER  NOT NULL,
+    FOREIGN KEY (files_id) REFERENCES files (id),
+    PRIMARY KEY (files_id, start_time)
+);
+"""
+
+
 __all__ = ["Consistency"]
 
 logger = logging.getLogger(__name__)
