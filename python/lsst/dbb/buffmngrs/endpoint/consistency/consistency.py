@@ -21,31 +21,10 @@
 """Component responsible for comparing storage area and repository.
 """
 
-"""NOTE: TO DELETE: 
-CREATE TABLE IF NOT EXISTS files (
-    id       INTEGER     PRIMARY KEY AUTOINCREMENT,
-    relpath  TEXT        NOT NULL, -- relative path to the image
-    filename TEXT        NOT NULL, -- image filename
-    checksum TEXT        NOT NULL, -- file's checksum
-    added_on NUMERIC     NOT NULL, -- time when the file was detected
-    UNIQUE (checksum, filename)
-);
-CREATE TABLE IF NOT EXISTS gen2_file_events (
-    ingest_ver  TEXT     NULL, -- Stack version used to ingest
-    start_time  NUMERIC  NULL, -- tiem when the attmept was made
-    duration    NUMERIC  NULL, -- ingest duration
-    err_message TEXT     NULL, -- traceback if an attempt failed
-    status      TEXT     NULL,
-    files_id    INTEGER  NOT NULL,
-    FOREIGN KEY (files_id) REFERENCES files (id),
-    PRIMARY KEY (files_id, start_time)
-);
-"""
-
-
 __all__ = ["Consistency"]
 
 logger = logging.getLogger(__name__)
+
 
 class Consistency:
     """A consistency tool to verify the status of repository and storage area.
@@ -66,39 +45,33 @@ class Consistency:
     def __init__(self, config):
         # Check if configuration is valid, i.e., all required settings are
         # provided; complain if not.
-        required = {"session", "sources", "storage", "tablenames"}
+        required = {"sourceA", "sourceB", "sourceA_settings", "sourceB_settings"}
         missing = required - set(config)
         if missing:
             msg = f"invalid configuration: {', '.join(missing)} not provided"
             logger.error(msg)
             raise ValueError(msg)
 
-        self.session = config["session"]
+        Left_source = config["sourceA"](config["sourceA_settings"])
+        Right_source = config["sourceB"](config["sourceB_settings"])
 
-        # Create necessary object-relational mappings. We are doing it
-        # dynamically as RDBMS tables to use are determined at runtime.
-        required = {"event", "file"}
-        missing = required - set(config["tablenames"])
-        if missing:
-            msg = f"invalid ORMs: {', '.join(missing)} not provided"
-            logger.error(msg)
-            raise ValueError(msg)
-        self.Event = event_creator(config["tablenames"])
-        self.File = file_creator(config["tablenames"])
+        self.Left_list = Left_source.get_list()
+        self.Right_list = Right_source.get_list()
 
-        self.storage = os.path.abspath(config["storage"])
-        if not os.path.isdir(self.storage):
-            msg = f"directory '{self.storage}' not found"
-            logger.error(msg)
-            raise ValueError(msg)
+    def run(self):
+        """Start the framework.
+        """
 
-        self.sources = config["sources"]
-        for src in [path for path in self.sources if path.startswith("/")]:
-            logger.warning(f"{src} is absolute, should be relative")
-            if os.path.commonpath([self.storage, src]) != self.storage:
-                msg = f"{src} is not located in the storage area"
-                logger.error(msg)
-                raise ValueError(msg)
+        set_left = set(self.Left_list)
+        set_right = set(self.Right_list)
 
-        search = config["search"]
-        self.search_opts = dict(blacklist=search.get("blacklist", None))
+        missing_left = [file for file in self.Right_list if
+                        file not in set_left]
+        missing_right = [file for file in self.Left_list if
+                         file not in set_right]
+        same_files = set_left.intersection(set_right)
+
+        print(f"Files in both sources: {same_files}")
+        print(f"Files missing from sourceA: {missing_left}")
+        print(f"Files missing from sourceB: {missing_right}")
+

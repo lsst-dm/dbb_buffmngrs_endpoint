@@ -61,24 +61,22 @@ def start(filename, dump, validate):
     if dump:
         logger.info(dump_all(configuration))
 
-    logger.info("setting up database connection...")
-    config = configuration["database"]
-    try:
-        session, tablenames = setup_connection(config)
-    except RuntimeError as ex:
-        logger.error(ex)
-        raise RuntimeError(ex)
-
     logger.info("setting up Consistency check...")
     config = configuration["consistency"]
 
-    # Create Backfill specific configuration. It is initialized with
-    # settings from relevant section of the global configuration, but new
-    # settings may be added, already existing ones may be altered.
-    backfill_config = dict(config)
-    backfill_config["session"] = session
-    backfill_config["tablenames"] = tablenames
+    # Detect and validate the consistency sources
 
-    logger.info("starting Backfill...")
-    component = Backfill(backfill_config)
+    sourceA = config["storage_source_one"]
+    sourceB = config["storage_source_two"]
+    sourceA_settings = config["source_one_data"]
+    sourceB_settings = config["source_two_data"]
+
+    consistency_config = dict()
+    consistency_config["sourceA"] = sourceA
+    consistency_config["sourceB"] = sourceB
+    consistency_config["sourceA_settings"] = sourceA_settings
+    consistency_config["sourceB_settings"] = sourceB_settings
+
+    logger.info("starting Consistency Check...")
+    component = Consistency(consistency_config)
     component.run()
