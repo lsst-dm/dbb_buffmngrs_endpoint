@@ -26,7 +26,7 @@ import os
 from glob import glob
 from itertools import chain
 
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from ..declaratives import event_creator, file_creator
 
 from ..search import scan
@@ -135,10 +135,10 @@ class Backfill:
                     records = self.session.query(self.File). \
                         filter(self.File.relpath == dirname,
                                self.File.filename == filename).all()
-                except SQLAlchemyError as exc:
+                except (DBAPIError, SQLAlchemyError) as ex:
+                    self.session.rollback()
                     counter = "failure"
-                    logger.error("%s: cannot check if tracked: %s",
-                                 relpath, exc)
+                    logger.error("%s: cannot check if tracked: %s", relpath, ex)
                 else:
                     counter = None
                     if records:
@@ -178,7 +178,7 @@ class Backfill:
                 # end the transaction).
                 try:
                     self.session.flush()
-                except SQLAlchemyError as ex:
+                except (DBAPIError, SQLAlchemyError) as ex:
                     self.session.rollback()
                     logger.error("%s: cannot create file entry: %s",
                                  relpath, ex)
@@ -198,7 +198,7 @@ class Backfill:
                 # any errors were encountered (ends the transaction).
                 try:
                     self.session.commit()
-                except Exception as ex:
+                except (DBAPIError, SQLAlchemyError) as ex:
                     self.session.rollback()
                     logger.error("%s: cannot create database entries: %s",
                                  relpath, ex)

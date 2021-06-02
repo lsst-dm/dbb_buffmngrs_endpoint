@@ -24,7 +24,7 @@ import logging
 import os
 import time
 
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 
 from ..declaratives import file_creator
 from ..search import search_methods
@@ -140,7 +140,7 @@ class Finder:
                     records = self.session.query(self.File).\
                         filter(self.File.checksum == attrs.checksum,
                                self.File.filename == attrs.filename).all()
-                except SQLAlchemyError as ex:
+                except (DBAPIError, SQLAlchemyError) as ex:
                     logger.error("%s: cannot check if tracked: %s",
                                  abspath, ex)
                     logger.debug("%s: terminating processing", abspath)

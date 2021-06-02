@@ -30,7 +30,7 @@ import time
 import traceback
 from dataclasses import dataclass
 
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.sql.expression import exists, func
 
 from ..declaratives import event_creator, file_creator
@@ -304,7 +304,7 @@ class Ingester:
             self.session.add_all(events)
             try:
                 self.session.commit()
-            except SQLAlchemyError as ex:
+            except (DBAPIError, SQLAlchemyError) as ex:
                 self.session.rollback()
                 logger.error("cannot commit updates: %s", ex)
 
@@ -337,7 +337,8 @@ class Ingester:
                                    start_time=datetime.datetime.now(),
                                    files_id=id_)
                 self.session.add(event)
-        except Exception as ex:
+        except (DBAPIError, SQLAlchemyError) as ex:
+            self.session.rollback()
             logger.error("failed to check for new files: %s", ex)
         else:
             try:
@@ -391,7 +392,8 @@ class Ingester:
         records = []
         try:
             records = list(query)
-        except SQLAlchemyError as ex:
+        except (DBAPIError, SQLAlchemyError) as ex:
+            self.session.rollback()
             logger.error("failed to retrieve files for processing: %s", ex)
         else:
             for rec in records:
