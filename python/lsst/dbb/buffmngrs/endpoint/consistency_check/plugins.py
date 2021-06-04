@@ -21,17 +21,10 @@
 import logging
 import os.path
 import os
-import sqlalchemy
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import DBAPIError, SQLAlchemyError
-import importlib
-import sys
-import lsst.log
-from lsst.daf.butler import Butler
 from ..abcs import Plugin
-from ..declaratives import file_creator
 
-__all__ = ["NullCompare", "Filename", "Directory", "Database", "Gen3Butler"]
+
+__all__ = ["NullCheck", "Filename", "Directory", "Database", "Gen3Butler"]
 
 
 logger = logging.getLogger(__name__)
@@ -125,16 +118,19 @@ class Gen3Butler(Plugin):
         self.inFSnotButler = []
         try:
             for rec in records:
-                if not os.path.exists(os.path.join(self.root, rec.relpath, rec.filename)):
-                    self.inButlerNotFS.append(os.path.exists(os.path.join(self.root, rec.relpath, rec.filename)))
-
+                if not os.path.exists(os.path.join(self.root, rec.relpath,
+                                                   rec.filename)):
+                    self.inButlerNotFS.append(os.path.exists(os.path.join(
+                        self.root, rec.relpath, rec.filename)))
+        except Exception as ex:
+            logger.error(f"failed to retrieve files for comparison: {ex}")
 
         for dirpath, dirnames, filenames in os.walk(config["root"]):
             for file in filenames:
-                notfile = self.session.query(self.File).filter(self.File.filename == file)
-                if notfile == None:
+                notfile = self.session.query(self.File).filter(
+                    self.File.filename == file).first()
+                if notfile is None:
                     self.inFSnotButler.append(file)
-
 
     def version(self):
         return Version
