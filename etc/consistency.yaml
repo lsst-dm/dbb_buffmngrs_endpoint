@@ -1,9 +1,0 @@
-consistency:
-  storage_source_one: database
-  source_one_data: "postgres://tester:password@localhost:5432/test"
-  storage_source_two: file
-  source_two_data: filename
-logging:
-  file: null
-  format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
-  level: INFO

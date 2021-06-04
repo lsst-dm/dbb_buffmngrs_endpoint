@@ -21,6 +21,8 @@
 import click
 import logging
 from .backfill.commands import backfill
+from .consistency_compare.commands import consistency_compare
+from .consistency_check.commands import consistency_check
 from .finder.commands import finder
 from .ingester.commands import ingester
 
@@ -36,6 +38,8 @@ def cli():
 cli.add_command(finder)
 cli.add_command(ingester)
 cli.add_command(backfill)
+cli.add_command(consistency_compare)
+cli.add_command(consistency_check
 
 
 def main():
