@@ -24,6 +24,7 @@ import dataclasses
 import hashlib
 import importlib
 import logging
+import logging.handlers
 import subprocess
 import sys
 from pathlib import Path
@@ -308,6 +309,11 @@ def setup_logging(options=None):
         "file": None,
         "format": "%(asctime)s:%(name)s:%(levelname)s:%(message)s",
         "level": "INFO",
+        "rotate": None,
+        "when": 'H',
+        "interval": 1,
+        "maxbytes": 0,
+        "backup_count": 0
     }
     if options is not None:
         settings.update(options)
@@ -320,7 +326,27 @@ def setup_logging(options=None):
 
     logfile = settings["file"]
     if logfile is not None:
-        kwargs["filename"] = logfile
+        handler = logging.FileHandler
+        opts = {}
+
+        rotate = settings["rotate"]
+        if rotate is not None:
+            opts.update({"backupCount": settings["backup_count"]})
+            if rotate.upper() == "SIZE":
+                opts.update({
+                    "maxBytes": settings["maxbytes"],
+                })
+                handler = logging.handlers.RotatingFileHandler
+            elif rotate.upper() == "TIME":
+                opts.update({
+                    "when": settings["when"],
+                    "interval": settings["interval"],
+                })
+                handler = logging.handlers.TimedRotatingFileHandler
+            else:
+                raise RuntimeError(f"unknown log rotate method '{rotate}'")
+
+        kwargs["handlers"] = [handler(logfile, **opts)]
 
     logging.basicConfig(**kwargs)
 
