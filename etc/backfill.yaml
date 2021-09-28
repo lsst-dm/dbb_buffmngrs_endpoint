@@ -19,3 +19,8 @@ logging:
   file: null
   format: "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
   level: INFO
+  rotate: null
+  when: 'H'
+  interval: 1
+  maxbytes: 0
+  backup_count: 0
