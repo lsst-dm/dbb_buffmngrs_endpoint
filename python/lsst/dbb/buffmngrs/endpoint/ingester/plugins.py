@@ -422,9 +422,7 @@ class Gen3DefineVisitsPlugin(Plugin):
         """
         ids = [ref.dataId for ref in data]
         with UsePythonLogging():
-            self.task.run(ids,
-                          collections=self._config["collections"],
-                          pool=None, processes=1)
+            self.task.run(ids, collections=self._config["collections"])
         return data
 
     def version(self):
