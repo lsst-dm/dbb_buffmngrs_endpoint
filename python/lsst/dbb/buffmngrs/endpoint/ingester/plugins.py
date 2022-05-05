@@ -24,7 +24,7 @@ import logging
 
 from lsst.log import UsePythonLogging
 from lsst.daf.butler import Butler
-from lsst.obs.base.utils import getInstrument
+from lsst.obs.base import Instrument
 from lsst.pipe.base.configOverrides import ConfigOverrides
 from lsst.utils import doImport
 
@@ -393,7 +393,7 @@ class Gen3DefineVisitsPlugin(Plugin):
         task_class = doImport(self._config["task"])
         task_config = task_class.ConfigClass()
 
-        instr = getInstrument(self._config["instrument"], butler.registry)
+        instr = Instrument.from_string(self._config["instrument"], butler.registry)
         instr.applyConfigOverrides(task_class._DefaultName, task_config)
         if self._config["collections"] is None:
             self._config["collections"] = instr.makeDefaultRawIngestRunName()
