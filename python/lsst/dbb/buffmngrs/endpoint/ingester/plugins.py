@@ -267,6 +267,11 @@ class Gen3RawIngestPlugin(Plugin):
         "output_run": None,
         "pool": None,
         "processes": 1,
+        "file_filter": r"\.fit[s]?\b",
+        "group_files": True,
+        "skip_existing_exposures": False,
+        "update_exposure_records": False,
+        "track_file_attrs": True,
         "task": "lsst.obs.base.RawIngestTask",
         "transfer": "direct",
     }
@@ -309,9 +314,17 @@ class Gen3RawIngestPlugin(Plugin):
             Dataset references for ingested raws.
         """
         with UsePythonLogging():
-            result = self.task.run([data],
-                                   run=self._config["output_run"],
-                                   pool=None, processes=1)
+            result = self.task.run(
+                [data],
+                run=self._config["output_run"],
+                pool=None,
+                processes=1,
+                file_filter=self._config["file_filter"],
+                group_files=self._config["group_files"],
+                skip_existing_exposures=self._config["skip_existing_exposures"],
+                update_exposure_records=self._config["update_exposure_records"],
+                track_file_attrs=self._config["track_file_attrs"]
+            )
         return result
 
     def version(self):

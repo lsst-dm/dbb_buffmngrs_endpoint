@@ -24,9 +24,15 @@ ingester:
       ingest:
         config: null
         config_file: null
+        pool: null
         processes: 1
+        file_filter: "\\.fit[s]?\\b"
+        group_files: true
+        skip_existing_exposures: false
+        update_exposure_records: false
+        track_file_attrs: true
         task: lsst.obs.base.RawIngestTask
-        transfer: symlink
+        transfer: direct
 
       # Settings specific to defining visits.
       visits:
