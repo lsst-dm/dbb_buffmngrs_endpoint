@@ -24,7 +24,7 @@ import logging
 
 from lsst.log import UsePythonLogging
 from lsst.daf.butler import Butler
-from lsst.obs.base import Instrument
+from lsst.pipe.base import Instrument
 from lsst.pipe.base.configOverrides import ConfigOverrides
 from lsst.utils import doImport
 
@@ -376,15 +376,11 @@ class Gen3DefineVisitsPlugin(Plugin):
     """
 
     # Default values for configuration settings.
-    #
-    # The ``pool`` and ``processes`` settings will be ignored and are included
-    # only for sake of completeness.
     _defaults = {
         "config_file": None,
         "collections": None,
-        "pool": None,
-        "processes": 1,
-        "task": "lsst.obs.base.DefineVisitsTask"
+        "update_records": False,
+        "task": "lsst.obs.base.DefineVisitsTask",
     }
 
     def __init__(self, config, butler):
@@ -422,7 +418,9 @@ class Gen3DefineVisitsPlugin(Plugin):
         """
         ids = [ref.dataId for ref in data]
         with UsePythonLogging():
-            self.task.run(ids, collections=self._config["collections"])
+            self.task.run(ids,
+                          collections=self._config["collections"],
+                          update_records=self._config["update_records"])
         return data
 
     def version(self):

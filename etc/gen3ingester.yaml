@@ -32,7 +32,8 @@ ingester:
       visits:
         instrument: <instrument>
         config_file: null
-        processes: 1
+        collections: null
+        update_records: false
         task: lsst.obs.base.DefineVisitTask
 
   include_list: null
