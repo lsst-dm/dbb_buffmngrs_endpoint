@@ -24,7 +24,7 @@ import logging
 
 from lsst.log import UsePythonLogging
 from lsst.daf.butler import Butler
-from lsst.obs.base import Instrument
+from lsst.pipe.base import Instrument
 from lsst.pipe.base.configOverrides import ConfigOverrides
 from lsst.utils import doImport
 
@@ -267,6 +267,11 @@ class Gen3RawIngestPlugin(Plugin):
         "output_run": None,
         "pool": None,
         "processes": 1,
+        "file_filter": r"\.fit[s]?\b",
+        "group_files": True,
+        "skip_existing_exposures": False,
+        "update_exposure_records": False,
+        "track_file_attrs": True,
         "task": "lsst.obs.base.RawIngestTask",
         "transfer": "direct",
     }
@@ -309,9 +314,17 @@ class Gen3RawIngestPlugin(Plugin):
             Dataset references for ingested raws.
         """
         with UsePythonLogging():
-            result = self.task.run([data],
-                                   run=self._config["output_run"],
-                                   pool=None, processes=1)
+            result = self.task.run(
+                [data],
+                run=self._config["output_run"],
+                pool=None,
+                processes=1,
+                file_filter=self._config["file_filter"],
+                group_files=self._config["group_files"],
+                skip_existing_exposures=self._config["skip_existing_exposures"],
+                update_exposure_records=self._config["update_exposure_records"],
+                track_file_attrs=self._config["track_file_attrs"]
+            )
         return result
 
     def version(self):
@@ -376,15 +389,11 @@ class Gen3DefineVisitsPlugin(Plugin):
     """
 
     # Default values for configuration settings.
-    #
-    # The ``pool`` and ``processes`` settings will be ignored and are included
-    # only for sake of completeness.
     _defaults = {
         "config_file": None,
         "collections": None,
-        "pool": None,
-        "processes": 1,
-        "task": "lsst.obs.base.DefineVisitsTask"
+        "update_records": False,
+        "task": "lsst.obs.base.DefineVisitsTask",
     }
 
     def __init__(self, config, butler):
@@ -422,7 +431,9 @@ class Gen3DefineVisitsPlugin(Plugin):
         """
         ids = [ref.dataId for ref in data]
         with UsePythonLogging():
-            self.task.run(ids, collections=self._config["collections"])
+            self.task.run(ids,
+                          collections=self._config["collections"],
+                          update_records=self._config["update_records"])
         return data
 
     def version(self):
