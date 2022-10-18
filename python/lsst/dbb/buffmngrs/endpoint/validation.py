@@ -220,7 +220,7 @@ properties:
                                     required:
                                         - butler
                     -
-                        if: 
+                        if:
                             properties:
                                 name:
                                     const: Gen3Ingest
@@ -338,6 +338,34 @@ properties:
                     - WARNING
                     - ERROR
                     - CRITICAL
+            rotate:
+                anyOf:
+                    - type: string
+                    - enum:
+                        - TIME
+                        - SIZE
+                    -type: "null"
+            when:
+                type: string
+                enum:
+                    - 'S'
+                    - 'M'
+                    - 'H'
+                    - 'D'
+                    - 'W0'
+                    - 'W1'
+                    - 'W2'
+                    - 'W3'
+                    - 'W4'
+                    - 'W5'
+                    - 'W6'
+                    - 'midnight'
+            interval:
+                type: integer
+            maxbytes:
+                type: integer
+            backup_count:
+                type: integer
 required:
     - database
     - ingester
@@ -428,6 +456,34 @@ properties:
                     - WARNING
                     - ERROR
                     - CRITICAL
+            rotate:
+                anyOf:
+                    - type: string
+                    - enum:
+                        - TIME
+                        - SIZE
+                    -type: "null"
+            when:
+                type: string
+                enum:
+                    - 'S'
+                    - 'M'
+                    - 'H'
+                    - 'D'
+                    - 'W0'
+                    - 'W1'
+                    - 'W2'
+                    - 'W3'
+                    - 'W4'
+                    - 'W5'
+                    - 'W6'
+                    - 'midnight'
+            interval:
+                type: integer
+            maxbytes:
+                type: integer
+            backup_count:
+                type: integer
 required:
     - database
     - backfill
